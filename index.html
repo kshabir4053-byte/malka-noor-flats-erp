@@ -301,6 +301,10 @@ input[type="file"]{display:none;}
 }
 .page { position: relative; z-index: 1; }
 .card { position: relative; z-index: 1; }
+
+@keyframes slideUp{from{transform:translateY(40px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.btn-wa{background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;}
+.btn-wa:hover{background:linear-gradient(135deg,#128C7E,#075E54);}
 </style>
 </head>
 <body>
@@ -652,7 +656,7 @@ input[type="file"]{display:none;}
       <div class="form-grid">
         <div class="form-group"><label>Booking Amount (Rs.)</label><input type="number" id="s-booking" placeholder="0" oninput="calcPlanTotal()"></div>
         <div class="form-group"><label>Booking Date</label><input type="date" id="s-bdate"></div>
-        <div class="form-group"><label style="color:var(--navy);font-weight:900;">Grand Total Sale Value (Rs.) *</label><input type="number" id="s-total" placeholder="0" style="font-weight:800;font-size:15px;color:var(--navy);" oninput="calcInstallments()"></div>
+        <div class="form-group"><label style="color:var(--navy);font-weight:900;">Grand Total Sale Value (Rs.) *</label><input type="number" id="s-grand-total" placeholder="0" style="font-weight:800;font-size:15px;color:var(--navy);" oninput="document.getElementById('s-total').value=this.value;calcInstallments()"></div>
         <div class="form-group"><label>Sale / Booking Date</label><input type="date" id="s-date"></div>
         <div class="form-group span2"><label>Special Notes / Conditions</label><input type="text" id="s-notes" placeholder="Any special conditions or notes"></div>
       </div>
@@ -1478,7 +1482,7 @@ function saveSale(){
   saveDB();
   showAlert('sale-alert','s','✅ Sale saved! Agreement ready.');
   currentAgreementCustomer=cust;
-  setTimeout(()=>openAgreementModal(cust.id),1000);
+  setTimeout(function(){ waNewBooking(cust); openAgreementModal(cust.id); }, 800);
   clearSale();
   renderAll();
 }
@@ -1655,6 +1659,7 @@ function savePayment(){
   const receipt=nextReceipt();
   D.payments.push({id:'p'+Date.now(),custId,instIdx:Number(instIdx),date:document.getElementById('col-date').value||today(),amount,mode:document.getElementById('col-mode').value,receipt,remarks:document.getElementById('col-remarks').value,createdAt:new Date().toISOString()});
   saveDB();showAlert('col-alert','s','✅ Payment saved! Receipt: '+receipt);
+  var _pc=getCust(custId); if(_pc){ var _pp=D.payments[D.payments.length-1]; var _out=Number(_pc.total||0)-getCustPaid(custId); setTimeout(function(){ waNewPayment(_pc,_pp,_out); },600); }
   clearPayment();renderPayments();renderDashboard();
 }
 
@@ -2475,6 +2480,72 @@ function updateBlacklistBadge(){
       t.innerHTML=count>0?`🚫 Blacklist <span style="background:var(--red);color:#fff;border-radius:20px;padding:1px 7px;font-size:10px;margin-left:4px;">${count}</span>`:'🚫 Blacklist';
     }
   });
+}
+
+
+
+// ==================== WHATSAPP NOTIFICATIONS ====================
+var WA_BOSS = '923212447324';
+
+function sendWANotification(msg){
+  var encoded = encodeURIComponent(msg);
+  var url = 'https://wa.me/' + WA_BOSS + '?text=' + encoded;
+  window.open(url, '_blank');
+  showWAToast();
+}
+
+function showWAToast(){
+  var toast = document.getElementById('wa-toast-box');
+  if(!toast){
+    toast = document.createElement('div');
+    toast.id = 'wa-toast-box';
+    toast.style.cssText = 'position:fixed;bottom:28px;right:28px;z-index:99999;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;padding:14px 20px;border-radius:14px;font-size:13px;font-weight:700;box-shadow:0 8px 32px rgba(0,0,0,.25);display:flex;align-items:center;gap:10px;max-width:360px;';
+    document.body.appendChild(toast);
+  }
+  toast.innerHTML = '<span style="font-size:22px;">💬</span><span>WhatsApp khul raha hai — Boss ko message bhejein!</span>';
+  toast.style.display = 'flex';
+  clearTimeout(window._waToastTimer);
+  window._waToastTimer = setTimeout(function(){ toast.style.display='none'; }, 5000);
+}
+
+function waNewBooking(cust){
+  var paid = getCustPaid(cust.id);
+  var lines = [];
+  lines.push('*MALKA NOOR RESIDENCY*');
+  lines.push('NEW BOOKING REGISTERED');
+  lines.push('Customer: ' + cust.name);
+  if(cust.fname) lines.push('Father/Husband: ' + cust.fname);
+  lines.push('CNIC: ' + (cust.cnic||'N/A'));
+  lines.push('Phone: ' + cust.phone);
+  lines.push('Flat No: ' + cust.flatno);
+  lines.push('Floor: ' + (FLOOR_NAMES[cust.floor]||cust.floor));
+  lines.push('Type: ' + (TYPES[cust.type]||cust.type));
+  lines.push('Sale Value: Rs. ' + fmt(cust.total));
+  if(paid > 0) lines.push('Booking Paid: Rs. ' + fmt(paid));
+  lines.push('Date: ' + fmtDate(cust.date));
+  lines.push('_Sent via MNR ERP_');
+  sendWANotification(lines.join('\n'));
+}
+
+function waNewPayment(cust, payment, outstanding){
+  var lines = [];
+  lines.push('*MALKA NOOR RESIDENCY*');
+  lines.push('PAYMENT RECEIVED');
+  lines.push('Customer: ' + cust.name);
+  lines.push('Phone: ' + cust.phone);
+  lines.push('Flat No: ' + cust.flatno);
+  lines.push('Floor: ' + (FLOOR_NAMES[cust.floor]||cust.floor));
+  lines.push('Amount Paid: Rs. ' + fmt(payment.amount));
+  lines.push('Mode: ' + payment.mode);
+  lines.push('Receipt No: ' + payment.receipt);
+  lines.push('Date: ' + fmtDate(payment.date));
+  if(payment.remarks) lines.push('Remarks: ' + payment.remarks);
+  lines.push('---');
+  lines.push('Total Sale: Rs. ' + fmt(cust.total));
+  lines.push('Total Paid: Rs. ' + fmt(getCustPaid(cust.id)));
+  lines.push('Outstanding: Rs. ' + fmt(outstanding));
+  lines.push('_Sent via MNR ERP_');
+  sendWANotification(lines.join('\n'));
 }
 
 // ==================== SETTINGS ====================
