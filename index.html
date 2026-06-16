@@ -1419,9 +1419,8 @@ function saveSale(){
   const flatno=document.getElementById('s-flatno').value.trim();
   const total=Number(document.getElementById('s-total').value)||0;
   const phone=document.getElementById('s-phone').value.trim();
-  if(!name||!flatno||!total||!phone){showAlert('sale-alert','e','Name, Flat No, Phone aur Total zaroori hain!');return;}
-  if(!document.getElementById('s-terms-accept').checked){showAlert('sale-alert','e','⚠️ Terms & Conditions accept karna zaroori hai!');return;}
-  if(D.customers.find(c=>c.flatno===flatno)){showAlert('sale-alert','e','Flat '+flatno+' already sold hai!');return;}
+  if(!name&&!flatno&&!total&&!phone){showAlert('sale-alert','e','Kam az kam ek field fill karein!');return;}
+  if(flatno&&D.customers.find(c=>c.flatno===flatno)){showAlert('sale-alert','e','Flat '+flatno+' already sold hai!');return;}
 
   const cust={
     id:'c'+Date.now(),
