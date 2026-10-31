@@ -1634,7 +1634,7 @@ function openCustModal(id){
           const status=getInstallmentStatus({...inst,idx:i},id);
           const statusMap={paid:'b-green',overdue:'b-red',upcoming:'b-orange',pending:'b-navy',booking:'b-gold'};
           const statusText={paid:'✅ Paid',overdue:'⚠️ Overdue',upcoming:'⏰ Due Soon',pending:'⏳ Pending',booking:'📋 Booking'};
-          return`<tr class="${status}"><td>${i+1}</td><td>${fmtDate(inst.dueDate)}</td><td>Rs. ${fmt(inst.amount)}</td><td>Rs. ${fmt(instPaid)}</td><td><span class="badge ${statusMap[status]||'b-navy'}">${statusText[status]||status}</span></td></tr>`;
+          return`<tr class="${status}"><td>${i+1}</td><td>${fmtDate(inst.dueDate)}</td><td>Rs. ${instAmt(inst)}</td><td>Rs. ${fmt(instPaid)}</td><td><span class="badge ${statusMap[status]||'b-navy'}">${statusText[status]||status}</span></td></tr>`;
         }).join('')}</tbody>
       </table>
     </div>
@@ -1772,7 +1772,7 @@ function renderLedgerOld(){
               const status=getInstallmentStatus({...inst,idx:i},custId);
               const statusMap={paid:'b-green',overdue:'b-red',upcoming:'b-orange',pending:'b-navy',booking:'b-gold'};
               const statusText={paid:'✅ Paid',overdue:'⚠️ Overdue',upcoming:'⏰ Due Soon',pending:'⏳ Pending',booking:'📋 Booking'};
-              return`<tr class="${status}"><td>${i+1}</td><td>${fmtDate(inst.dueDate)}</td><td>Rs. ${fmt(inst.amount)}</td><td class="text-green">Rs. ${fmt(instPaid)}</td><td class="${bal>0?'text-red':'text-green'}">Rs. ${fmt(bal)}</td><td><span class="badge ${statusMap[status]||'b-navy'}">${statusText[status]||status}</span></td></tr>`;
+              return`<tr class="${status}"><td>${i+1}</td><td>${fmtDate(inst.dueDate)}</td><td>Rs. ${instAmt(inst)}</td><td class="text-green">Rs. ${fmt(instPaid)}</td><td class="${bal>0?'text-red':'text-green'}">Rs. ${fmt(bal)}</td><td><span class="badge ${statusMap[status]||'b-navy'}">${statusText[status]||status}</span></td></tr>`;
             }).join('')}</tbody>
           </table>
         </div>
@@ -1941,7 +1941,7 @@ function buildAgreementHTML(c,paid,outstanding){
               const instPaid=getCustInstPaid(c.id,i);
               const status=getInstallmentStatus({...inst,idx:i},c.id);
               const statusColors={paid:'#1a6b3a',overdue:'#b03020',upcoming:'#c86820',pending:'#8a7a60',booking:'#0d1b3e',milestone:'#1a4a8a',monthly:'#1a4a8a',slab:'#7a3a8a'};
-              return`<tr style="background:${i%2===0?'#fff':'#fdf9f2'};border-bottom:1px solid #f0ebe0;"><td style="padding:6px 10px;">${i+1}</td><td style="padding:6px 10px;">${inst.label||inst.type}</td><td style="padding:6px 10px;">${fmtDate(inst.dueDate)}</td><td style="padding:6px 10px;text-align:right;font-weight:700;">${fmt(inst.amount)}</td><td style="padding:6px 10px;text-align:center;"><span style="padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;background:rgba(0,0,0,.05);color:${statusColors[status]||'#5a4e3a'};">${status==='paid'?'✅ Paid':status==='overdue'?'⚠️ Overdue':status==='upcoming'?'⏰ Due Soon':'⏳ Pending'}</span></td></tr>`;
+              return`<tr style="background:${i%2===0?'#fff':'#fdf9f2'};border-bottom:1px solid #f0ebe0;"><td style="padding:6px 10px;">${i+1}</td><td style="padding:6px 10px;">${inst.label||inst.type}</td><td style="padding:6px 10px;">${fmtDate(inst.dueDate)}</td><td style="padding:6px 10px;text-align:right;font-weight:700;">${instAmt(inst)}</td><td style="padding:6px 10px;text-align:center;"><span style="padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;background:rgba(0,0,0,.05);color:${statusColors[status]||'#5a4e3a'};">${status==='paid'?'✅ Paid':status==='overdue'?'⚠️ Overdue':status==='upcoming'?'⏰ Due Soon':'⏳ Pending'}</span></td></tr>`;
             }).join('')}</tbody>
           </table>
         </div>
@@ -2604,21 +2604,35 @@ function edate(iso,k){const p=(iso||today()).split('-').map(Number);const day=p[
 function planOf(c){
   const total=Number(c.total||0),N=Math.max(0,Math.min(60,Number(c.instcount)||0));
   const dpReq=Number(c.dpreq||0);
-  const dpRec=D.payments.filter(p=>p.custId===c.id&&p.applied==='DP').reduce((a,p)=>a+Number(p.amount||0),0);
-  const rest=Math.max(0,total-dpRec);
-  const monthly=N>0?Math.round(rest/N):0;
+  const sumP=f=>D.payments.filter(p=>p.custId===c.id&&f(p)).reduce((a,p)=>a+Number(p.amount||0),0);
+  const dpRec=sumP(p=>p.applied==='DP');
+  const advRec=sumP(p=>p.applied==='ADV');          // advance: total se minus
+  const rest0=Math.max(0,total-dpRec);              // advance se pehle ki baqi raqam
+  const rest=Math.max(0,rest0-advRec);              // advance ke baad
+  const m0=N>0?Math.round(rest0/N):0;               // asli monthly (Excel formula)
+  const paidArr=[];for(let i=1;i<=N;i++)paidArr.push(sumP(p=>p.applied!=='DP'&&p.applied!=='ADV'&&Number(p.applied)===i));
+  const origDue=i=>i===N?rest0-m0*(N-1):m0;
+  // advance ho to: jin installments par payment ho chuki unki raqam wahi, baqi par nayi monthly
+  let dueArr=[],monthly=m0;
+  if(advRec>0&&N>0){
+    let closedDue=0,k=0;paidArr.forEach((p,j)=>{if(p>0){closedDue+=origDue(j+1);k++;}});
+    const openCnt=N-k,pool=Math.max(0,rest-closedDue);
+    monthly=openCnt>0?Math.round(pool/openCnt):m0;
+    let seenOpen=0;
+    for(let i=1;i<=N;i++){
+      if(paidArr[i-1]>0)dueArr.push(origDue(i));
+      else{seenOpen++;dueArr.push(seenOpen===openCnt?pool-monthly*(openCnt-1):monthly);}
+    }
+  } else { for(let i=1;i<=N;i++)dueArr.push(origDue(i)); monthly=m0; }
   const rows=[];let carry=0;
   for(let i=1;i<=N;i++){
-    const due=i===N?rest-monthly*(N-1):monthly;
-    const paid=D.payments.filter(p=>p.custId===c.id&&p.applied!=='DP'&&Number(p.applied)===i).reduce((a,p)=>a+Number(p.amount||0),0);
+    const due=dueArr[i-1],paid=paidArr[i-1];
     const payable=due+carry;            // monthly + pichla shortfall (ya minus advance)
     const balance=payable-paid;         // negative = advance, agli installment kam karega
     rows.push({type:'monthly',label:'Installment #'+i,dueDate:edate(c.firstDate||c.date,i-1),due,carry,payable,paid,balance,amount:Math.max(0,payable),idx:i-1});
-    const dueDate=rows[rows.length-1].dueDate;
-    const closed=dueDate<=today()||paid>0;   // date guzar gayi ya payment hui
-    carry=(closed||balance<0)?balance:0;     // shortfall agay, advance bhi agay
+    carry=(paid>0||balance<0)?balance:0;
   }
-  return {total,N,dpReq,dpRec,dpBal:Math.max(0,dpReq-dpRec),monthly,rows,advance:carry<0?-carry:0};
+  return {total,N,dpReq,dpRec,advRec,dpBal:Math.max(0,dpReq-dpRec),monthly,rows,advance:carry<0?-carry:0};
 }
 function repairTotals(){
   D.customers.forEach(c=>{
@@ -2633,11 +2647,18 @@ function syncAll(){
   const xl={};D.customers.forEach(c=>{if(c.plan==='xl')xl[c.id]=1;});
   D.payments.forEach(p=>{if(xl[p.custId]&&(p.applied===undefined||p.applied===''))p.applied='DP';});
   D.customers.forEach(c=>{if(c.plan==='xl')c.installments=planOf(c).rows;});
-  D.payments.forEach(p=>{if(p.applied==='DP')p.instIdx=-1;else if(p.applied!==undefined&&p.applied!=='')p.instIdx=Number(p.applied)-1;});
+  D.payments.forEach(p=>{if(p.applied==='DP'||p.applied==='ADV')p.instIdx=-1;else if(p.applied!==undefined&&p.applied!=='')p.instIdx=Number(p.applied)-1;});
 }
 function buildInstallmentSchedule(){return [];}
-function xlPlanRows(c){const p=planOf(c);const rest=Math.max(0,p.total-p.dpRec);
-  return [{label:'Down Payment Received'+(p.dpReq>p.dpRec?' (Required: Rs. '+fmt(p.dpReq)+')':''),amt:p.dpRec},{label:p.N?p.N+' Monthly Installments of Rs. '+fmt(p.monthly)+' (first: '+fmtDate(c.firstDate)+')':'Remaining Balance (installments abhi set nahi — ✏️ Edit karein)',amt:rest}];}
+function instAmt(i){
+  if(i.due===undefined)return fmt(i.amount);
+  return fmt(i.due)+(i.carry>0?` <small style="color:#b03020;font-weight:700;">(+${fmt(i.carry)} baqaya)</small>`:i.carry<0?` <small style="color:#1a7a40;font-weight:700;">(−${fmt(-i.carry)} advance)</small>`:'');
+}
+function xlPlanRows(c){const p=planOf(c);const rest=Math.max(0,p.total-p.dpRec-p.advRec);
+  const rows=[{label:'Down Payment Received'+(p.dpReq>p.dpRec?' (Required: Rs. '+fmt(p.dpReq)+')':''),amt:p.dpRec}];
+  if(p.advRec>0)rows.push({label:'Advance Received (total se minus)',amt:p.advRec});
+  rows.push({label:p.N?(p.advRec>0?p.N+' Monthly Installments (advance ke baad baqi installments Rs. '+fmt(p.monthly)+' each, first: '+fmtDate(c.firstDate)+')':p.N+' Monthly Installments of Rs. '+fmt(p.monthly)+' (first: '+fmtDate(c.firstDate)+')'):'Remaining Balance (installments abhi set nahi — ✏️ Edit karein)',amt:rest});
+  return rows;}
 
 function loadCustomerInstallments(){
   const custId=document.getElementById('col-customer').value;
@@ -2648,6 +2669,7 @@ function loadCustomerInstallments(){
   const pl=planOf(c);let first=null,firstAmt=0;
   sel.innerHTML='<option value="">— Applied To —</option>';
   if(pl.dpBal>0||pl.dpRec===0){sel.innerHTML+=`<option value="DP">Down Payment — Rs. ${fmt(pl.dpBal)} remaining</option>`;if(pl.dpBal>0){first='DP';firstAmt=pl.dpBal;}}
+  if(c.plan==='xl'&&pl.N>0)sel.innerHTML+=`<option value="ADV">Advance — total se minus, monthly kam hogi</option>`;
   pl.rows.forEach((r,i)=>{
     const rem=r.balance;
     if(rem>0){sel.innerHTML+=`<option value="${i+1}">#${i+1} — ${fmtDate(r.dueDate)} — Rs. ${fmt(rem)} remaining ${getInstallmentStatus(r,custId)==='overdue'?'⚠️':''}</option>`;if(first===null){first=String(i+1);firstAmt=rem;}}
@@ -2660,8 +2682,8 @@ function savePayment(){
   const amount=Number(document.getElementById('col-amount').value)||0;
   if(!custId||ap===''||!amount){showAlert('col-alert','e','Customer, Applied To aur Amount zaroori!');return;}
   const receipt=nextReceipt();
-  const applied=ap==='DP'?'DP':Number(ap);
-  D.payments.push({id:'p'+Date.now(),custId,applied,instIdx:applied==='DP'?-1:applied-1,date:document.getElementById('col-date').value||today(),amount,mode:document.getElementById('col-mode').value,receipt,remarks:document.getElementById('col-remarks').value,createdAt:new Date().toISOString()});
+  const applied=(ap==='DP'||ap==='ADV')?ap:Number(ap);
+  D.payments.push({id:'p'+Date.now(),custId,applied,instIdx:(applied==='DP'||applied==='ADV')?-1:applied-1,date:document.getElementById('col-date').value||today(),amount,mode:document.getElementById('col-mode').value,receipt,remarks:document.getElementById('col-remarks').value,createdAt:new Date().toISOString()});
   syncAll();saveDB();showAlert('col-alert','s','✅ Payment saved! Receipt: '+receipt);
   const _pc=getCust(custId);if(_pc){const _pp=D.payments[D.payments.length-1];const _out=Number(_pc.total||0)-getCustPaid(custId);setTimeout(function(){waNewPayment(_pc,_pp,_out);},600);}
   clearPayment();renderPayments();renderDashboard();
@@ -2685,14 +2707,14 @@ function renderLedger(){
   <div style="text-align:center;margin-bottom:14px;"><div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:var(--navy);">Statement of Account</div><div style="font-size:12px;color:var(--text3);">(Installment Details & Balance Amount) · ${D.settings.company||'Malka Noor Residency'}</div></div>
   <div class="two-col" style="margin-bottom:16px;">
     <table>${kv('Client Name',c.name)}${kv('Application No',c.appno)}${kv('Contact No',c.phone)}${kv('CNIC',c.cnic)}${kv('Unit No',c.flatno)}${kv('Level / Floor',FLOOR_NAMES[c.floor]||c.floor)}${kv('Description',TYPES[c.type]||c.type)}${kv('Size (Sq. Ft)',c.area?fmt(c.area):'')}${kv('Rate Per Sq. Ft (Rs)',c.rate?fmt(c.rate):'')}</table>
-    <table>${kv('Total Price (Rs)',fmt(pl.total))}${kv('Total Received (Rs)',fmt(paid))}${kv('Balance Amount (Rs)',`<span class="${bal>0?'text-red':'text-green'}">${fmt(bal)}</span>`)}${kv('Status',status)}${kv('Down Payment Required (Rs)',fmt(pl.dpReq))}${kv('Down Payment Received (Rs)',fmt(pl.dpRec))}${kv('Down Payment Balance (Rs)',fmt(pl.dpBal))}${kv('Installments / Monthly (Rs)',pl.N+' × '+fmt(pl.monthly))}</table>
+    <table>${kv('Total Price (Rs)',fmt(pl.total))}${kv('Total Received (Rs)',fmt(paid))}${kv('Balance Amount (Rs)',`<span class="${bal>0?'text-red':'text-green'}">${fmt(bal)}</span>`)}${kv('Status',status)}${kv('Down Payment Required (Rs)',fmt(pl.dpReq))}${kv('Down Payment Received (Rs)',fmt(pl.dpRec))}${kv('Down Payment Balance (Rs)',fmt(pl.dpBal))}${kv('Advance Received (Rs)',fmt(pl.advRec))}${kv('Installments / Monthly (Rs)',pl.N+' × '+fmt(pl.monthly))}</table>
   </div>
   <div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;margin-bottom:8px;">📋 Consolidated Payment Plan</div>
   <div class="two-col" style="margin-bottom:6px;"><div class="tbl-wrap">${tbl(h1)}</div><div class="tbl-wrap">${h2.length?tbl(h2):''}</div></div>
   <div style="font-size:12px;margin-bottom:18px;"><b>Total Monthly Due:</b> Rs. ${fmt(sum(pl.rows.map(r=>r.due)))} &nbsp;|&nbsp; <b>Total Paid (installments):</b> Rs. ${fmt(sum(pl.rows.map(r=>r.paid)))}</div>
   <div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;margin-bottom:8px;">💰 Payment Ledger</div>
   <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Receipt No</th><th>Particulars</th><th>Type</th><th>Applied To</th><th>Amount</th><th>Total Received</th><th>Balance Due</th></tr></thead><tbody>
-  ${pays.length?pays.map(p=>{run+=Number(p.amount||0);return`<tr><td>${fmtDate(p.date)}</td><td><b>${p.receipt||'—'}</b></td><td>${p.remarks||''}</td><td>${p.mode||''}</td><td>${p.applied==='DP'?'Down Payment':(p.applied||'—')}</td><td class="text-green amount">Rs. ${fmt(p.amount)}</td><td>Rs. ${fmt(run)}</td><td class="${pl.total-run>0?'text-red':'text-green'}">Rs. ${fmt(pl.total-run)}</td></tr>`;}).join(''):'<tr><td colspan="8" class="empty">No payments</td></tr>'}
+  ${pays.length?pays.map(p=>{run+=Number(p.amount||0);return`<tr><td>${fmtDate(p.date)}</td><td><b>${p.receipt||'—'}</b></td><td>${p.remarks||''}</td><td>${p.mode||''}</td><td>${p.applied==='DP'?'Down Payment':p.applied==='ADV'?'Advance':(p.applied||'—')}</td><td class="text-green amount">Rs. ${fmt(p.amount)}</td><td>Rs. ${fmt(run)}</td><td class="${pl.total-run>0?'text-red':'text-green'}">Rs. ${fmt(pl.total-run)}</td></tr>`;}).join(''):'<tr><td colspan="8" class="empty">No payments</td></tr>'}
   </tbody></table></div>`;
 }
 </script>
