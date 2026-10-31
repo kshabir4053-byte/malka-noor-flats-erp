@@ -1215,7 +1215,10 @@ function getCustInstPaid(custId,instIdx){
 }
 
 // ==================== FLOOR PLAN ====================
+function normFlat(x){return String(x||'').toUpperCase().replace(/[^A-Z0-9]/g,'');}
 function renderFloorPlan(){
+  const custByFlat={};D.customers.forEach(c=>{const k=normFlat(c.flatno);if(k&&!custByFlat[k])custByFlat[k]=c;});
+  const usedKeys=new Set();
   const filter=document.getElementById('fp-floor')?.value||'all';
   const floors=filter==='all'?FLOORS:[filter];
   // Type color map
@@ -1225,9 +1228,8 @@ function renderFloorPlan(){
   html+=Object.entries(TYPES).map(([k,v])=>`<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:${typeColors[k]};border:1.5px solid ${typeBorders[k]};color:${typeBorders[k]};">${v}</span>`).join('');
   html+='</div>';
   floors.forEach(f=>{
-    const floorCusts=D.customers.filter(c=>c.floor===f);
     const floorTotal=FLAT_LAYOUT.length;
-    const floorSold=floorCusts.length;
+    const floorSold=FLAT_LAYOUT.filter(fl=>custByFlat[normFlat(f+fl.no)]).length;
     html+=`<div style="margin-bottom:24px;">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
         <div style="font-family:'Playfair Display',serif;font-size:14px;font-weight:700;padding:7px 18px;background:linear-gradient(135deg,var(--navy),var(--navy3));color:var(--gold2);border-radius:8px;">${FLOOR_NAMES[f]}</div>
@@ -1236,7 +1238,8 @@ function renderFloorPlan(){
       <div class="floor-grid">`;
     FLAT_LAYOUT.forEach(flat=>{
       const flatno=`${f}${flat.no}`;
-      const cust=floorCusts.find(c=>c.flatno===flatno);
+      const cust=custByFlat[normFlat(flatno)];
+      if(cust)usedKeys.add(normFlat(flatno));
       let statusClass='available',statusText='Available';
       if(cust){
         const paid=getCustPaid(cust.id);
@@ -1250,12 +1253,18 @@ function renderFloorPlan(){
       html+=`<div class="flat-cell ${statusClass}" style="${!cust?`background:${bg};border-color:${border};`:''}" onclick="${cust?`openCustModal('${cust.id}')`:''}" title="${cust?cust.name+' — Flat '+flatno:flatno+' — '+TYPES[flat.type]}">
         <div class="flat-cell-no">${flatno}</div>
         <div class="flat-cell-type" style="${!cust?`color:${typeBorders[flat.type]};font-weight:800;`:''}">${TYPES[flat.type]||flat.type}</div>
-        <div class="flat-cell-status">${statusText}</div>
-        ${cust?`<div style="font-size:9.5px;font-weight:800;color:var(--navy);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(255,255,255,.7);border-radius:4px;padding:1px 4px;">👤 ${cust.name}</div>`:''}
+        ${cust?`<div style="font-size:11px;font-weight:800;color:var(--navy);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(255,255,255,.75);border-radius:4px;padding:2px 5px;">👤 ${cust.name}</div><div class="flat-cell-status" style="margin-top:3px;">${statusText}</div>`:`<div class="flat-cell-status">${statusText}</div>`}
       </div>`;
     });
     html+='</div></div>';
   });
+  if(filter==='all'){
+    const orphans=D.customers.filter(c=>!usedKeys.has(normFlat(c.flatno)));
+    if(orphans.length){
+      html+=`<div style="margin-top:10px;padding:12px;border:2px dashed var(--orange);border-radius:10px;background:var(--orange2);"><div style="font-weight:800;color:var(--orange);margin-bottom:8px;">⚠️ Yeh bookings kisi flat box se match nahi hui (Unit No check karein)</div><div style="display:flex;gap:8px;flex-wrap:wrap;">`+
+      orphans.map(c=>`<span style="cursor:pointer;padding:4px 10px;border-radius:8px;background:#fff;border:1px solid var(--orange);font-size:12px;" onclick="openCustModal('${c.id}')"><b>${c.flatno||'—'}</b> · ${c.name}</span>`).join('')+`</div></div>`;
+    }
+  }
   document.getElementById('floorplan-body').innerHTML=html;
 }
 
@@ -1263,7 +1272,9 @@ function renderFloorPlan(){
 function checkFlatAvailability(){
   const flatno=document.getElementById('s-flatno').value.trim();
   if(!flatno)return;
-  const exists=D.customers.find(c=>c.flatno===flatno);
+  const m=normFlat(flatno).match(/^([1-9])\d{2}$/);
+  if(m){const fs=document.getElementById('s-floor');if(fs)fs.value=m[1];}
+  const exists=D.customers.find(c=>normFlat(c.flatno)===normFlat(flatno)&&c.id!==editingId);
   if(exists){showAlert('sale-alert','e','⚠️ Flat '+flatno+' already '+exists.name+' ko sold/booked hai!');}
 }
 
@@ -1405,7 +1416,7 @@ function saveSale(){
   if(!name&&!flatno&&!total&&!phone){showAlert('sale-alert','e','Kam az kam ek field fill karein!');return;}
   if(!name||!flatno){showAlert('sale-alert','e','Client Name aur Unit No zaroori hain!');return;}
   if(!total){showAlert('sale-alert','e','Size aur Rate daalein, Total Price khud calculate hoga.');return;}
-  if(flatno&&D.customers.find(c=>c.flatno===flatno&&c.id!==editingId)){showAlert('sale-alert','e','Flat '+flatno+' already sold hai!');return;}
+  if(flatno&&D.customers.find(c=>normFlat(c.flatno)===normFlat(flatno)&&c.id!==editingId)){showAlert('sale-alert','e','Flat '+flatno+' already sold hai!');return;}
 
   const cust={
     id:'c'+Date.now(),
