@@ -654,11 +654,17 @@ input[type="file"]{display:none;}
       <!-- SECTION 5: Booking Amount -->
       <div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);">💰 Booking & Sale</div>
       <div class="form-grid">
-        <div class="form-group"><label>Booking Amount (Rs.)</label><input type="number" id="s-booking" placeholder="0" oninput="calcPlanTotal()"></div>
+        <div class="form-group"><label>Booking / Down Payment Received (Rs.)</label><input type="number" id="s-booking" placeholder="0" oninput="calcPlanTotal()"></div>
         <div class="form-group"><label>Booking Date</label><input type="date" id="s-bdate"></div>
         <div class="form-group"><label style="color:var(--navy);font-weight:900;">Grand Total Sale Value (Rs.) *</label><input type="number" id="s-grand-total" placeholder="0" style="font-weight:800;font-size:15px;color:var(--navy);" oninput="document.getElementById('s-total').value=this.value;calcInstallments()"></div>
         <div class="form-group"><label>Sale / Booking Date</label><input type="date" id="s-date"></div>
         <div class="form-group span2"><label>Special Notes / Conditions</label><input type="text" id="s-notes" placeholder="Any special conditions or notes"></div>
+      </div>
+      <div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);">📅 Consolidated Payment Plan</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Down Payment Required (Rs.)</label><input type="number" id="s-dpreq" placeholder=""></div>
+        <div class="form-group"><label>Number of Installments (max 60)</label><input type="number" id="s-instcount" min="0" max="60" placeholder=""></div>
+        <div class="form-group"><label>First Installment Date</label><input type="date" id="s-firstinst"></div>
       </div>
       <!-- Hidden fields for compatibility -->
       <input type="hidden" id="s-confirmation" value="0">
@@ -666,8 +672,6 @@ input[type="file"]{display:none;}
       <input type="hidden" id="s-startwork" value="0">
       <input type="hidden" id="s-plinth" value="0">
       <input type="hidden" id="s-instamt" value="0">
-      <input type="hidden" id="s-instcount" value="0">
-      <input type="hidden" id="s-firstinst" value="">
       <input type="hidden" id="s-slab" value="0">
       <input type="hidden" id="s-slabcount" value="0">
       <input type="hidden" id="s-block" value="0">
@@ -1094,6 +1098,7 @@ function getInstallmentStatus(inst,custId){
 }
 
 function renderAll(){
+  syncAll();
   renderDashboard();
   renderFloorPlan();
   buildCustomerDropdowns();
@@ -1468,7 +1473,8 @@ function saveSale(){
     instcount:Number(document.getElementById('s-instcount')?.value)||0,
     slab:Number(document.getElementById('s-slab')?.value)||0,
     slabcount:Number(document.getElementById('s-slabcount')?.value)||0,
-    installments:buildInstallmentSchedule(),
+    dpreq:Number(document.getElementById('s-dpreq')?.value)||0,firstDate:document.getElementById('s-firstinst')?.value||'',plan:'xl',
+    installments:[],
     createdAt:new Date().toISOString()
   };
   D.customers.push(cust);
@@ -1476,7 +1482,7 @@ function saveSale(){
   // Save booking payment if any
   const booking=Number(document.getElementById('s-booking').value)||0;
   if(booking>0){
-    D.payments.push({id:'p'+Date.now(),custId:cust.id,instIdx:0,date:document.getElementById('s-bdate').value||today(),amount:booking,mode:'Cash',receipt:nextReceipt(),remarks:'Booking amount',createdAt:new Date().toISOString()});
+    D.payments.push({id:'p'+Date.now(),custId:cust.id,instIdx:-1,applied:'DP',date:document.getElementById('s-bdate').value||today(),amount:booking,mode:'Cash',receipt:nextReceipt(),remarks:'Booking amount',createdAt:new Date().toISOString()});
   }
 
   saveDB();
@@ -1487,7 +1493,7 @@ function saveSale(){
   renderAll();
 }
 
-function clearSale(){
+function clearSale(){["s-dpreq","s-instcount","s-firstinst"].forEach(function(i){var e=document.getElementById(i);if(e)e.value="";});
   ['s-flatno','s-area','s-rate','s-baseprice','s-corner','s-corner-side','s-open-side','s-westopen','s-parking','s-other','s-total','s-name','s-fname','s-cnic','s-phone','s-nationality','s-occupation','s-officephone','s-wa','s-email','s-address','s-resaddress','s-nominee','s-nomineemob','s-nomineerel','s-nomineeaddr','s-notes','s-booking','s-baseprice'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('s-date').value=today();
   document.getElementById('s-bdate').value=today();
@@ -1706,7 +1712,7 @@ function buildLedgerDropdown(){
   if(cur)sel.value=cur;
 }
 
-function renderLedger(){
+function renderLedgerOld(){
   const custId=document.getElementById('led-customer')?.value;
   const body=document.getElementById('ledger-body');if(!body)return;
   if(!custId){body.innerHTML='<div class="empty">Upar se customer select karein</div>';return;}
@@ -2574,6 +2580,81 @@ function saveSettings(){
 }
 
 function resetAll(){D={settings:D.settings,customers:[],payments:[],receiptSeq:1};saveDB();renderAll();document.getElementById('settings-modal').style.display='none';alert('✅ Reset done!');}
+
+// ==================== EXCEL-STYLE PAYMENT PLAN (Statement + Ledger) ====================
+function edate(iso,k){const p=(iso||today()).split('-').map(Number);const day=p[2];const d=new Date(Date.UTC(p[0],p[1]-1+k,1));const last=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();d.setUTCDate(Math.min(day,last));return d.toISOString().split('T')[0];}
+function planOf(c){
+  const total=Number(c.total||0),N=Math.max(0,Math.min(60,Number(c.instcount)||0));
+  const dpReq=Number(c.dpreq||0);
+  const dpRec=D.payments.filter(p=>p.custId===c.id&&p.applied==='DP').reduce((a,p)=>a+Number(p.amount||0),0);
+  const rest=Math.max(0,total-dpRec);
+  const monthly=N>0?Math.round(rest/N):0;
+  const rows=[];
+  for(let i=1;i<=N;i++){rows.push({type:'monthly',label:'Installment #'+i,dueDate:edate(c.firstDate||c.date,i-1),amount:i===N?rest-monthly*(N-1):monthly,idx:i-1});}
+  return {total,N,dpReq,dpRec,dpBal:Math.max(0,dpReq-dpRec),monthly,rows};
+}
+function syncAll(){
+  D.customers.forEach(c=>{if(c.plan==='xl')c.installments=planOf(c).rows;});
+  D.payments.forEach(p=>{if(p.applied==='DP')p.instIdx=-1;else if(p.applied!==undefined&&p.applied!=='')p.instIdx=Number(p.applied)-1;});
+}
+function buildInstallmentSchedule(){return [];}
+
+function loadCustomerInstallments(){
+  const custId=document.getElementById('col-customer').value;
+  const sel=document.getElementById('col-installment');
+  if(!custId){sel.innerHTML='<option value="">— Select —</option>';return;}
+  const c=getCust(custId);if(!c)return;
+  syncAll();
+  const pl=planOf(c);let first=null,firstAmt=0;
+  sel.innerHTML='<option value="">— Applied To —</option>';
+  if(pl.dpBal>0||pl.dpRec===0){sel.innerHTML+=`<option value="DP">Down Payment — Rs. ${fmt(pl.dpBal)} remaining</option>`;if(pl.dpBal>0){first='DP';firstAmt=pl.dpBal;}}
+  pl.rows.forEach((r,i)=>{
+    const rem=r.amount-getCustInstPaid(custId,i);
+    if(rem>0){sel.innerHTML+=`<option value="${i+1}">#${i+1} — ${fmtDate(r.dueDate)} — Rs. ${fmt(rem)} remaining ${getInstallmentStatus(r,custId)==='overdue'?'⚠️':''}</option>`;if(first===null){first=String(i+1);firstAmt=rem;}}
+  });
+  if(first!==null){sel.value=first;document.getElementById('col-amount').value=firstAmt;}
+}
+function savePayment(){
+  const custId=document.getElementById('col-customer').value;
+  const ap=document.getElementById('col-installment').value;
+  const amount=Number(document.getElementById('col-amount').value)||0;
+  if(!custId||ap===''||!amount){showAlert('col-alert','e','Customer, Applied To aur Amount zaroori!');return;}
+  const receipt=nextReceipt();
+  const applied=ap==='DP'?'DP':Number(ap);
+  D.payments.push({id:'p'+Date.now(),custId,applied,instIdx:applied==='DP'?-1:applied-1,date:document.getElementById('col-date').value||today(),amount,mode:document.getElementById('col-mode').value,receipt,remarks:document.getElementById('col-remarks').value,createdAt:new Date().toISOString()});
+  syncAll();saveDB();showAlert('col-alert','s','✅ Payment saved! Receipt: '+receipt);
+  const _pc=getCust(custId);if(_pc){const _pp=D.payments[D.payments.length-1];const _out=Number(_pc.total||0)-getCustPaid(custId);setTimeout(function(){waNewPayment(_pc,_pp,_out);},600);}
+  clearPayment();renderPayments();renderDashboard();
+}
+
+function renderLedger(){
+  const custId=document.getElementById('led-customer')?.value;
+  const c=custId?getCust(custId):null;
+  if(!c||c.plan!=='xl')return renderLedgerOld();
+  const body=document.getElementById('ledger-body');if(!body)return;
+  syncAll();currentAgreementCustomer=c;
+  const pl=planOf(c),paid=getCustPaid(custId),bal=pl.total-paid;
+  const status=pl.total<=0?'':(bal<=0?'Full Paid':'Balance Due');
+  const kv=(k,v)=>`<tr><td style="color:var(--text3);font-weight:700;">${k}</td><td><b>${v===''||v==null?'—':v}</b></td></tr>`;
+  const tbl=rows=>`<table class="inst-table"><thead><tr><th>No</th><th>Payment Date</th><th>Amount Due</th><th>Amount Paid</th></tr></thead><tbody>${rows.map(r=>{const p=getCustInstPaid(custId,r.idx);return`<tr class="${getInstallmentStatus(r,custId)}"><td>${r.idx+1}</td><td>${fmtDate(r.dueDate)}</td><td>Rs. ${fmt(r.amount)}</td><td class="${p>=r.amount?'text-green':'text-red'}">Rs. ${fmt(p)}</td></tr>`;}).join('')||'<tr><td colspan="4" class="empty">—</td></tr>'}</tbody></table>`;
+  const sum=a=>a.reduce((x,y)=>x+y,0);
+  const h1=pl.rows.slice(0,30),h2=pl.rows.slice(30);
+  let run=0;
+  const pays=getCustPayments(custId).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')||(a.createdAt||'').localeCompare(b.createdAt||''));
+  body.innerHTML=`
+  <div style="text-align:center;margin-bottom:14px;"><div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:var(--navy);">Statement of Account</div><div style="font-size:12px;color:var(--text3);">(Installment Details & Balance Amount) · ${D.settings.company||'Malka Noor Residency'}</div></div>
+  <div class="two-col" style="margin-bottom:16px;">
+    <table>${kv('Client Name',c.name)}${kv('Contact No',c.phone)}${kv('CNIC',c.cnic)}${kv('Unit No',c.flatno)}${kv('Level / Floor',FLOOR_NAMES[c.floor]||c.floor)}${kv('Description',TYPES[c.type]||c.type)}${kv('Size (Sq. Ft)',c.area?fmt(c.area):'')}${kv('Rate Per Sq. Ft (Rs)',c.rate?fmt(c.rate):'')}</table>
+    <table>${kv('Total Price (Rs)',fmt(pl.total))}${kv('Total Received (Rs)',fmt(paid))}${kv('Balance Amount (Rs)',`<span class="${bal>0?'text-red':'text-green'}">${fmt(bal)}</span>`)}${kv('Status',status)}${kv('Down Payment Required (Rs)',fmt(pl.dpReq))}${kv('Down Payment Received (Rs)',fmt(pl.dpRec))}${kv('Down Payment Balance (Rs)',fmt(pl.dpBal))}${kv('Installments / Monthly (Rs)',pl.N+' × '+fmt(pl.monthly))}</table>
+  </div>
+  <div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;margin-bottom:8px;">📋 Consolidated Payment Plan</div>
+  <div class="two-col" style="margin-bottom:6px;"><div class="tbl-wrap">${tbl(h1)}</div><div class="tbl-wrap">${h2.length?tbl(h2):''}</div></div>
+  <div style="font-size:12px;margin-bottom:18px;"><b>Total Due:</b> Rs. ${fmt(sum(pl.rows.map(r=>r.amount)))} &nbsp;|&nbsp; <b>Total Paid (installments):</b> Rs. ${fmt(sum(pl.rows.map(r=>getCustInstPaid(custId,r.idx))))}</div>
+  <div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;margin-bottom:8px;">💰 Payment Ledger</div>
+  <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Receipt No</th><th>Particulars</th><th>Type</th><th>Applied To</th><th>Amount</th><th>Total Received</th><th>Balance Due</th></tr></thead><tbody>
+  ${pays.length?pays.map(p=>{run+=Number(p.amount||0);return`<tr><td>${fmtDate(p.date)}</td><td><b>${p.receipt||'—'}</b></td><td>${p.remarks||''}</td><td>${p.mode||''}</td><td>${p.applied==='DP'?'Down Payment':(p.applied||'—')}</td><td class="text-green amount">Rs. ${fmt(p.amount)}</td><td>Rs. ${fmt(run)}</td><td class="${pl.total-run>0?'text-red':'text-green'}">Rs. ${fmt(pl.total-run)}</td></tr>`;}).join(''):'<tr><td colspan="8" class="empty">No payments</td></tr>'}
+  </tbody></table></div>`;
+}
 </script>
 </body>
 </html>
