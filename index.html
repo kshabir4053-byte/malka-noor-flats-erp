@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
 <title>Malka Noor Residency — Flat Management ERP</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -515,10 +516,17 @@ input[type="file"]{display:none;}
           <label>Rate Per Sq. Ft (Rs.)</label>
           <input type="number" id="s-rate" placeholder="" oninput="calcPrice()">
         </div>
+        <div class="form-group"><label>Base Price (Rs.) — Size × Rate</label><input type="number" id="s-baseprice" readonly placeholder="" style="background:#f5f0e4;"></div>
+        <div class="form-group"><label>Corner Side (Rs.)</label><input type="number" id="s-corner-side" placeholder="" oninput="calcTotal()"></div>
+        <div class="form-group"><label>Open Side (Rs.)</label><input type="number" id="s-open-side" placeholder="" oninput="calcTotal()"></div>
+        <div class="form-group"><label>Corner (Rs.)</label><input type="number" id="s-corner" placeholder="" oninput="calcTotal()"></div>
+        <div class="form-group"><label>Car Parking (Rs.)</label><input type="number" id="s-parking" placeholder="" oninput="calcTotal()"></div>
+        <div class="form-group"><label>3rd Floor Extra (Rs.)</label><input type="number" id="s-westopen" placeholder="" oninput="calcTotal()"></div>
+        <div class="form-group"><label>Other Extra (Rs.)</label><input type="number" id="s-other" placeholder="" oninput="calcTotal()"></div>
         <div class="form-group">
-          <label>Total Price (Rs.) — auto: Size × Rate</label>
+          <label>Total Sale Value (Rs.) — auto: Base + Extras</label>
           <input type="number" id="s-total" readonly placeholder="" style="font-weight:800;font-size:15px;color:var(--navy);background:#f5f0e4;">
-          <input type="hidden" id="s-baseprice">
+          
         </div>
         <div class="form-group">
           <label>Sale Date *</label>
@@ -604,7 +612,6 @@ input[type="file"]{display:none;}
         </div>
       </div>
 
-      <div style="display:none"><input type="number" id="s-corner-side" value="0"><input type="number" id="s-open-side" value="0"><input type="number" id="s-corner" value="0"><input type="number" id="s-parking" value="0"><input type="number" id="s-westopen" value="0"><input type="number" id="s-other" value="0"></div>
       <!-- SECTION 4: ID Card Upload -->
       <div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);">🪪 CNIC / ID Card Upload</div>
       <div class="form-grid">
@@ -707,7 +714,7 @@ input[type="file"]{display:none;}
       </div>
 
       <div class="btn-row no-print">
-        <button class="btn btn-gold" onclick="saveSale()">💾 Save Booking & Generate Agreement</button>
+        <button class="btn btn-gold" id="save-sale-btn" onclick="saveSale()">💾 Save Booking & Generate Agreement</button>
         <button class="btn btn-blue" onclick="clearSale()">🗑 Clear</button>
       </div>
     </div>
@@ -940,6 +947,7 @@ input[type="file"]{display:none;}
     <div class="modal-header">
       <h3>📄 Sale Agreement</h3>
       <div style="display:flex;gap:8px;">
+        <button class="btn btn-blue btn-sm" onclick="if(currentAgreementCustomer)editCustomer(currentAgreementCustomer.id)">✏️ Edit</button>
         <button class="btn btn-gold btn-sm" onclick="doPrintAgreement()">🖨️ Print</button>
         <button class="modal-close" onclick="document.getElementById('agreement-modal').style.display='none'">✕</button>
       </div>
@@ -1260,13 +1268,15 @@ function autoFillPrice(){
 function calcPrice(){
   const area=Number(document.getElementById('s-area').value)||0;
   const rate=Number(document.getElementById('s-rate').value)||0;
-  const base=Math.round(area*rate);
-  document.getElementById('s-baseprice').value=base||'';
-  document.getElementById('s-total').value=base||'';
+  document.getElementById('s-baseprice').value=Math.round(area*rate)||'';
+  calcTotal();
+}
+function calcTotal(){
+  const g=id=>Number(document.getElementById(id)?.value)||0;
+  const t=g('s-baseprice')+g('s-corner')+g('s-corner-side')+g('s-open-side')+g('s-westopen')+g('s-parking')+g('s-other');
+  document.getElementById('s-total').value=t||'';
   calcPlanTotal();
 }
-
-function calcTotal(){calcPrice();}
 
 function calcPlanTotal(){
   const booking=Number(document.getElementById('s-booking')?.value)||0;
@@ -1386,7 +1396,7 @@ function saveSale(){
   if(!name&&!flatno&&!total&&!phone){showAlert('sale-alert','e','Kam az kam ek field fill karein!');return;}
   if(!name||!flatno){showAlert('sale-alert','e','Client Name aur Unit No zaroori hain!');return;}
   if(!total){showAlert('sale-alert','e','Size aur Rate daalein, Total Price khud calculate hoga.');return;}
-  if(flatno&&D.customers.find(c=>c.flatno===flatno)){showAlert('sale-alert','e','Flat '+flatno+' already sold hai!');return;}
+  if(flatno&&D.customers.find(c=>c.flatno===flatno&&c.id!==editingId)){showAlert('sale-alert','e','Flat '+flatno+' already sold hai!');return;}
 
   const cust={
     id:'c'+Date.now(),
@@ -1437,23 +1447,52 @@ function saveSale(){
     installments:[],
     createdAt:new Date().toISOString()
   };
-  D.customers.push(cust);
+  const wasEdit=!!editingId;
+  if(wasEdit){
+    const old=getCust(editingId);
+    cust.id=old.id;cust.createdAt=old.createdAt;
+    cust.plan=(old.plan==='xl'||cust.instcount>0)?'xl':old.plan;
+    if(cust.plan!=='xl')cust.installments=old.installments||[];
+    Object.assign(old,cust);
+  } else D.customers.push(cust);
 
   // Save booking payment if any
   const booking=Number(document.getElementById('s-booking').value)||0;
-  if(booking>0){
+  if(booking>0&&!wasEdit){
     D.payments.push({id:'p'+Date.now(),custId:cust.id,instIdx:-1,applied:'DP',date:document.getElementById('s-bdate').value||today(),amount:booking,mode:'Cash',receipt:nextReceipt(),remarks:'Booking amount',createdAt:new Date().toISOString()});
   }
 
   saveDB();
   showAlert('sale-alert','s','✅ Sale saved! Agreement ready.');
   currentAgreementCustomer=cust;
-  setTimeout(function(){ waNewBooking(cust); openAgreementModal(cust.id); }, 800);
+  setTimeout(function(){ if(!wasEdit)waNewBooking(cust); openAgreementModal(cust.id); }, 800);
   clearSale();
   renderAll();
 }
 
-function clearSale(){["s-dpreq","s-instcount","s-firstinst","s-appno"].forEach(function(i){var e=document.getElementById(i);if(e)e.value="";});
+let editingId=null;
+function setEditMode(on){
+  const b=document.getElementById('save-sale-btn');if(b)b.textContent=on?'✏️ Update Sale & Show Agreement':'💾 Save Booking & Generate Agreement';
+  ['s-booking','s-bdate'].forEach(i=>{const e=document.getElementById(i);if(e)e.disabled=!!on;});
+}
+function editCustomer(id){
+  const c=getCust(id);if(!c)return;
+  document.getElementById('agreement-modal').style.display='none';
+  showPage('sales');clearSale();editingId=id;setEditMode(true);
+  const v=(i,x)=>{const e=document.getElementById(i);if(e)e.value=(x==null||x===0)?'':x;};
+  v('s-flatno',c.flatno);document.getElementById('s-floor').value=c.floor;document.getElementById('s-type').value=c.type;
+  v('s-area',c.area);v('s-rate',c.rate);v('s-corner',c.corner);v('s-corner-side',c.cornerside);v('s-open-side',c.openside);v('s-westopen',c.westopen);v('s-parking',c.parking);v('s-other',c.other);
+  v('s-date',c.date);v('s-name',c.name);v('s-fname',c.fname);v('s-cnic',c.cnic);v('s-nationality',c.nationality);v('s-occupation',c.occupation);v('s-phone',c.phone);v('s-officephone',c.officephone);v('s-wa',c.wa);v('s-email',c.email);v('s-address',c.address);v('s-resaddress',c.resaddress);
+  v('s-nominee',c.nominee);v('s-nomineemob',c.nomineemob);v('s-nomineerel',c.nomineerel);v('s-nomineeaddr',c.nomineeaddr);v('s-notes',c.notes);
+  v('s-appno',c.appno);v('s-dpreq',c.dpreq);v('s-instcount',c.instcount);v('s-firstinst',c.firstDate);
+  calcPrice();
+  if(!document.getElementById('s-total').value&&c.total)document.getElementById('s-total').value=c.total;
+  currentPhotoB64=c.photo||'';currentCnicFrontB64=c.cnicFront||'';currentCnicBackB64=c.cnicBack||'';
+  [['photo-upload-area',currentPhotoB64],['cnic-front-area',currentCnicFrontB64],['cnic-back-area',currentCnicBackB64]].forEach(([a,b])=>{const e=document.getElementById(a);if(e&&b)e.innerHTML=`<img src="${b}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;});
+  showAlert('sale-alert','s','✏️ Edit mode: '+c.name+' (Flat '+c.flatno+'). Badlav karke "Update Sale" dabayein. Payments same rahenge.');
+  window.scrollTo(0,0);
+}
+function clearSale(){editingId=null;setEditMode(false);["s-dpreq","s-instcount","s-firstinst","s-appno"].forEach(function(i){var e=document.getElementById(i);if(e)e.value="";});
   ['s-flatno','s-area','s-rate','s-baseprice','s-corner','s-corner-side','s-open-side','s-westopen','s-parking','s-other','s-total','s-name','s-fname','s-cnic','s-phone','s-nationality','s-occupation','s-officephone','s-wa','s-email','s-address','s-resaddress','s-nominee','s-nomineemob','s-nomineerel','s-nomineeaddr','s-notes','s-booking','s-baseprice'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('s-date').value=today();
   document.getElementById('s-bdate').value=today();
@@ -1499,7 +1538,7 @@ function renderCustomers(){
     if(statusF!=='all'&&statusF!==status)return null;
     return`<tr>
       <td>${i+1}</td>
-      <td>${c.photo?`<img src="${c.photo}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);">`:'<div style="width:36px;height:36px;border-radius:50%;background:var(--navy);display:flex;align-items:center;justify-content:center;color:var(--gold2);font-weight:800;font-size:13px;">${c.name.charAt(0)}</div>'}</td>
+      <td>${c.photo?`<img src="${c.photo}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);">`:`<div style="width:36px;height:36px;border-radius:50%;background:var(--navy);display:flex;align-items:center;justify-content:center;color:var(--gold2);font-weight:800;font-size:13px;">${c.name.charAt(0)}</div>`}</td>
       <td><b>${c.name}</b><div style="font-size:10px;color:var(--text3);">${c.phone}</div></td>
       <td style="font-size:11px;">${c.cnic||'—'}</td>
       <td><b>${c.flatno}</b></td>
@@ -1512,6 +1551,7 @@ function renderCustomers(){
       <td class="no-print">
         <button class="btn btn-navy btn-xs" onclick="openCustModal('${c.id}')">👁️</button>
         <button class="btn btn-gold btn-xs" onclick="openAgreementModal('${c.id}')">📄</button>
+        <button class="btn btn-blue btn-xs" onclick="editCustomer('${c.id}')" title="Edit">✏️</button>
         <button class="btn btn-green btn-xs" onclick="openReceiptModal('${c.id}')">🧾</button>
         <button class="btn btn-orange btn-xs" onclick="openDemandModal('${c.id}')">📋</button>
         <button class="btn btn-red btn-xs" onclick="deleteCust('${c.id}')">Del</button>
@@ -2563,6 +2603,9 @@ function planOf(c){
   return {total,N,dpReq,dpRec,dpBal:Math.max(0,dpReq-dpRec),monthly,rows,advance:carry<0?-carry:0};
 }
 function syncAll(){
+  // Purani payments (jin par 'Applied To' nahi tha) naye plan wale customer mein Down Payment ginti jayengi
+  const xl={};D.customers.forEach(c=>{if(c.plan==='xl')xl[c.id]=1;});
+  D.payments.forEach(p=>{if(xl[p.custId]&&(p.applied===undefined||p.applied===''))p.applied='DP';});
   D.customers.forEach(c=>{if(c.plan==='xl')c.installments=planOf(c).rows;});
   D.payments.forEach(p=>{if(p.applied==='DP')p.instIdx=-1;else if(p.applied!==undefined&&p.applied!=='')p.instIdx=Number(p.applied)-1;});
 }
@@ -2627,5 +2670,6 @@ function renderLedger(){
   </tbody></table></div>`;
 }
 </script>
+<div style="position:fixed;bottom:6px;left:10px;font-size:10px;font-weight:700;color:#8a7a60;z-index:9;pointer-events:none;">Version 4 · Excel Plan + Edit · 31-Oct-2026</div>
 </body>
 </html>
