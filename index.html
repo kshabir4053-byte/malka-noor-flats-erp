@@ -419,6 +419,7 @@ input[type="file"]{display:none;}
         <span class="badge b-red">● Sold</span>
         <span class="badge b-orange">● Partial</span>
         <span class="badge b-blue">● Booked</span>
+        <button class="btn btn-gold btn-sm" onclick="printFloorPlan()">🖨️ Print Report</button>
         <select id="fp-floor" class="filter-sel" onchange="renderFloorPlan()">
           <option value="all">All Floors</option>
           <option value="1">1st Floor</option>
@@ -1235,51 +1236,118 @@ function getCustInstPaid(custId,instIdx){
 }
 
 // ==================== FLOOR PLAN ====================
+const FP_TYPE_COL={A:'#c9a84c',B:'#1a4a8a',B1:'#7a1a8a',C:'#1a6b3a',C1:'#c86820',PH:'#b03020',CS:'#0a7a7a'};
+const FP_ST={available:{t:'Available',c:'#1a7a40',bg:'#f2fbf5'},paid:{t:'Sold · Paid',c:'#b03020',bg:'#fdf1ef'},partial:{t:'Sold · Partial',c:'#d9822b',bg:'#fff6ea'},booked:{t:'Booked',c:'#1a4a8a',bg:'#eef3fc'}};
+function fpInfo(f,flat){
+  const flatno=`${f}${flat.no}`;
+  const cust=D.customers.find(c=>c.flatno===flatno);
+  let status='available',paid=0,total=0;
+  if(cust){paid=getCustPaid(cust.id);total=Number(cust.total||0);status=(total>0&&paid>=total)?'paid':paid>0?'partial':'booked';}
+  return {flatno,cust,status,paid,total,type:flat.type};
+}
+function sold_(o){return o.paid+o.partial+o.booked;}
+function fpStats(){
+  const z=()=>({total:0,paid:0,partial:0,booked:0,available:0});
+  const st={all:z(),floors:{},types:{},value:0,collected:0};
+  FLOORS.forEach(f=>{st.floors[f]=z();FLAT_LAYOUT.forEach(flat=>{
+    const i=fpInfo(f,flat);const t=st.types[flat.type]||(st.types[flat.type]=z());
+    [st.all,st.floors[f],t].forEach(o=>{o.total++;o[i.status]++;});
+    if(i.cust){st.value+=i.total;st.collected+=i.paid;}
+  });});
+  const sold=o=>o.paid+o.partial+o.booked;st.sold=sold;
+  return st;
+}
 function renderFloorPlan(){
+  if(!document.getElementById('fp-style')){const el=document.createElement('style');el.id='fp-style';el.textContent=`
+  .fp-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px;}
+  .fp-stat{background:linear-gradient(145deg,#fff,#faf6ec);border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:0 3px 10px rgba(13,27,62,.07);position:relative;overflow:hidden;}
+  .fp-stat:before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--c,#0d1b3e);}
+  .fp-stat .l{font-size:10px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);}
+  .fp-stat .v{font-family:'Playfair Display',serif;font-size:26px;font-weight:900;color:var(--c,#0d1b3e);line-height:1.2;}
+  .fp-stat .s{font-size:11px;color:var(--text3);margin-top:2px;}
+  .fp-bar{height:8px;border-radius:6px;background:#eadfc8;overflow:hidden;display:flex;}
+  .fp-bar i{display:block;height:100%;}
+  .fp-types{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:22px;}
+  .fp-type{background:#fff;border:1px solid var(--border);border-top:4px solid var(--c);border-radius:10px;padding:10px 12px;}
+  .fp-type b{font-size:12px;color:var(--c);} .fp-type div.n{font-size:12px;margin:4px 0 6px;color:var(--text2,#4a3f2a);}
+  .fpc{--st:#1a7a40;border-radius:12px;padding:10px 12px;border:1.5px solid #eadfc8;border-left:6px solid var(--st);background:#fff;box-shadow:0 2px 6px rgba(13,27,62,.08);cursor:pointer;transition:transform .15s,box-shadow .15s;min-height:92px;display:flex;flex-direction:column;gap:4px;}
+  .fpc:hover{transform:translateY(-3px);box-shadow:0 8px 18px rgba(13,27,62,.16);}
+  .fpc-top{display:flex;justify-content:space-between;align-items:center;gap:6px;}
+  .fpc-no{font-family:'Playfair Display',serif;font-size:17px;font-weight:900;color:var(--navy);}
+  .fpc-type{font-size:9.5px;font-weight:800;color:#fff;border-radius:20px;padding:2px 8px;white-space:nowrap;}
+  .fpc-st{font-size:10.5px;font-weight:800;color:var(--st);}
+  .fpc-name{font-size:10px;font-weight:800;color:var(--navy);background:rgba(255,255,255,.85);border-radius:5px;padding:2px 5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .fp-fh{display:flex;align-items:center;gap:14px;margin-bottom:12px;flex-wrap:wrap;}
+  `;document.head.appendChild(el);}
   const filter=document.getElementById('fp-floor')?.value||'all';
   const floors=filter==='all'?FLOORS:[filter];
-  // Type color map
-  const typeColors={A:'#fff8e8',B:'#e8f0fd',B1:'#f0e8fd',C:'#e8fdf0',C1:'#fdf0e8',PH:'#fde8e8',CS:'#e8fdfd'};
-  const typeBorders={A:'#c9a84c',B:'#1a4a8a',B1:'#7a1a8a',C:'#1a6b3a',C1:'#c86820',PH:'#b03020',CS:'#0a7a7a'};
-  let html='<div style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;">';
-  html+=Object.entries(TYPES).map(([k,v])=>`<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:${typeColors[k]};border:1.5px solid ${typeBorders[k]};color:${typeBorders[k]};">${v}</span>`).join('');
-  html+='</div>';
+  const st=fpStats(),A=st.all,sold=st.sold(A),pct=A.total?Math.round(sold/A.total*100):0;
+  const bar=(o)=>`<div class="fp-bar"><i style="width:${o.total?o.paid/o.total*100:0}%;background:#b03020"></i><i style="width:${o.total?o.partial/o.total*100:0}%;background:#d9822b"></i><i style="width:${o.total?o.booked/o.total*100:0}%;background:#1a4a8a"></i></div>`;
+  const card=(l,v,sub,c)=>`<div class="fp-stat" style="--c:${c}"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${sub||'&nbsp;'}</div></div>`;
+  let html=`<div class="fp-stats">
+    ${card('Total Flats',A.total,'Across '+FLOORS.length+' floors','#0d1b3e')}
+    ${card('Sold / Booked',sold,'Paid '+A.paid+' · Partial '+A.partial+' · Booked '+A.booked,'#b03020')}
+    ${card('Remaining',A.available,'Available for sale','#1a7a40')}
+    <div class="fp-stat" style="--c:#c9a84c"><div class="l">Sold Progress</div><div class="v">${pct}%</div><div style="margin-top:6px;">${bar(A)}</div></div>
+    ${card('Total Sale Value','Rs. '+fmt(st.value),'Collected Rs. '+fmt(st.collected),'#0a7a7a')}
+    ${card('Outstanding','Rs. '+fmt(Math.max(0,st.value-st.collected)),'Still to collect','#d9822b')}
+  </div>
+  <div class="fp-types">${Object.keys(TYPES).filter(k=>st.types[k]).map(k=>{const o=st.types[k];return`<div class="fp-type" style="--c:${FP_TYPE_COL[k]}"><b>${TYPES[k]}</b><div class="n">Sold <b style="color:#b03020">${sold_(o)}</b> / ${o.total} &nbsp;·&nbsp; Left <b style="color:#1a7a40">${o.available}</b></div>${bar(o)}</div>`;}).join('')}</div>`;
+  function sold_(o){return o.paid+o.partial+o.booked;}
   floors.forEach(f=>{
-    const floorCusts=D.customers.filter(c=>c.floor===f);
-    const floorTotal=FLAT_LAYOUT.length;
-    const floorSold=floorCusts.length;
-    html+=`<div style="margin-bottom:24px;">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
-        <div style="font-family:'Playfair Display',serif;font-size:14px;font-weight:700;padding:7px 18px;background:linear-gradient(135deg,var(--navy),var(--navy3));color:var(--gold2);border-radius:8px;">${FLOOR_NAMES[f]}</div>
-        <span style="font-size:12px;color:var(--text3);">${floorSold} Sold / ${floorTotal-floorSold} Available</span>
-      </div>
-      <div class="floor-grid">`;
+    const o=st.floors[f],so=sold_(o);
+    html+=`<div style="margin-bottom:26px;">
+      <div class="fp-fh">
+        <div style="font-family:'Playfair Display',serif;font-size:15px;font-weight:800;padding:8px 20px;background:linear-gradient(135deg,var(--navy),var(--navy3));color:var(--gold2);border-radius:10px;box-shadow:0 3px 8px rgba(13,27,62,.2);">${FLOOR_NAMES[f]}</div>
+        <span style="font-size:13px;font-weight:700;"><span style="color:#b03020;">${so} Sold</span> &nbsp;/&nbsp; <span style="color:#1a7a40;">${o.available} Remaining</span></span>
+        <div style="width:170px;">${bar(o)}</div><span style="font-size:11px;color:var(--text3);">${o.total?Math.round(so/o.total*100):0}% sold</span>
+      </div><div class="floor-grid">`;
     FLAT_LAYOUT.forEach(flat=>{
-      const flatno=`${f}${flat.no}`;
-      const cust=floorCusts.find(c=>c.flatno===flatno);
-      let statusClass='available',statusText='Available';
-      if(cust){
-        const paid=getCustPaid(cust.id);
-        const total=Number(cust.total||0);
-        if(paid>=total){statusClass='sold';statusText='Paid';}
-        else if(paid>0){statusClass='partial';statusText='Partial';}
-        else{statusClass='booked';statusText='Booked';}
-      }
-      const bg=cust?'':typeColors[flat.type]||'#f8f8f8';
-      const border=cust?'':typeBorders[flat.type]||'#ccc';
-      html+=`<div class="flat-cell ${statusClass}" style="${!cust?`background:${bg};border-color:${border};`:''}" onclick="${cust?`openCustModal('${cust.id}')`:''}" title="${cust?cust.name+' — Flat '+flatno:flatno+' — '+TYPES[flat.type]}">
-        <div class="flat-cell-no">${flatno}</div>
-        <div class="flat-cell-type" style="${!cust?`color:${typeBorders[flat.type]};font-weight:800;`:''}">${TYPES[flat.type]||flat.type}</div>
-        <div class="flat-cell-status">${statusText}</div>
-        ${cust?`<div style="font-size:9.5px;font-weight:800;color:var(--navy);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(255,255,255,.7);border-radius:4px;padding:1px 4px;">👤 ${cust.name}</div>`:''}
+      const i=fpInfo(f,flat),S=FP_ST[i.status],pc=i.total>0?Math.min(100,Math.round(i.paid/i.total*100)):0;
+      html+=`<div class="fpc" style="--st:${S.c};background:${S.bg};" onclick="${i.cust?`openCustModal('${i.cust.id}')`:''}" title="${i.cust?i.cust.name+' — Flat '+i.flatno:i.flatno+' — '+TYPES[flat.type]}">
+        <div class="fpc-top"><span class="fpc-no">${i.flatno}</span><span class="fpc-type" style="background:${FP_TYPE_COL[flat.type]||'#888'}">${TYPES[flat.type]||flat.type}</span></div>
+        <div class="fpc-st">● ${S.t}</div>
+        ${i.cust?`<div class="fpc-name">👤 ${i.cust.name}</div><div class="fp-bar" style="height:5px;"><i style="width:${pc}%;background:${S.c}"></i></div>`:''}
       </div>`;
     });
     html+='</div></div>';
   });
   document.getElementById('floorplan-body').innerHTML=html;
 }
+function printFloorPlan(){
+  const st=fpStats(),A=st.all,sold=st.sold(A);
+  const filter=document.getElementById('fp-floor')?.value||'all';
+  const floors=filter==='all'?FLOORS:[filter];
+  const co=(D.settings&&D.settings.company)||'Malka Noor Residency';
+  const row=(n,o)=>`<tr><td style="text-align:left;font-weight:700">${n}</td><td>${o.total}</td><td>${o.paid}</td><td>${o.partial}</td><td>${o.booked}</td><td style="color:#b03020;font-weight:800">${o.paid+o.partial+o.booked}</td><td style="color:#1a7a40;font-weight:800">${o.available}</td><td>${o.total?Math.round((o.paid+o.partial+o.booked)/o.total*100):0}%</td></tr>`;
+  const head='<tr><th style="text-align:left">&nbsp;</th><th>Total</th><th>Paid</th><th>Partial</th><th>Booked</th><th>SOLD</th><th>REMAINING</th><th>Sold %</th></tr>';
+  let g='';
+  floors.forEach(f=>{
+    g+=`<h3>${FLOOR_NAMES[f]} — ${sold_(st.floors[f])} Sold / ${st.floors[f].available} Remaining</h3><div class="grid">`;
+    FLAT_LAYOUT.forEach(flat=>{const i=fpInfo(f,flat),S=FP_ST[i.status];
+      g+=`<div class="c" style="border-left:5px solid ${S.c};background:${S.bg}"><b>${i.flatno}</b> <span style="color:${FP_TYPE_COL[flat.type]}">${TYPES[flat.type]||flat.type}</span><br><span style="color:${S.c};font-weight:700">${S.t}</span>${i.cust?`<br><span class="n">${i.cust.name}</span>`:''}</div>`;});
+    g+='</div>';
+  });
+  const w=window.open('','_blank','width=1000,height=800');
+  if(!w){alert('Please allow pop-ups to print.');return;}
+  w.document.write(`<!DOCTYPE html><html><head><title>Floor Plan Report</title><style>
+  *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;padding:22px;color:#1a1510;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  h1{margin:0;color:#0d1b3e;font-size:24px}.sub{color:#8a7a60;font-size:12px;margin:3px 0 14px}
+  .k{display:flex;gap:10px;margin-bottom:14px}.k div{flex:1;border:2px solid #0d1b3e;border-radius:10px;padding:10px 14px}.k b{display:block;font-size:26px}.k span{font-size:11px;text-transform:uppercase;font-weight:700;color:#555}
+  table{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:12px}th{background:#0d1b3e;color:#f0d98c;padding:7px;text-align:center}td{padding:6px;border-bottom:1px solid #ddd;text-align:center}
+  h3{margin:14px 0 6px;color:#0d1b3e;font-size:14px;page-break-after:avoid}.grid{display:grid;grid-template-columns:repeat(9,1fr);gap:5px;margin-bottom:6px}
+  .c{border:1px solid #ddd;border-radius:5px;padding:4px 6px;font-size:9px;line-height:1.35;page-break-inside:avoid}.n{font-weight:700;color:#0d1b3e}
+  .lg span{display:inline-block;margin-right:14px;font-size:11px;font-weight:700}@page{size:A4 landscape;margin:10mm}
+  </style></head><body>
+  <h1>${co} — Floor Plan Status Report</h1><div class="sub">Printed on ${fmtDate(today())}</div>
+  <div class="k"><div><span>Total Flats</span><b>${A.total}</b></div><div style="border-color:#b03020"><span>Sold / Booked</span><b style="color:#b03020">${sold}</b></div><div style="border-color:#1a7a40"><span>Remaining</span><b style="color:#1a7a40">${A.available}</b></div><div><span>Sold %</span><b>${A.total?Math.round(sold/A.total*100):0}%</b></div></div>
+  <table>${head}${FLOORS.map(f=>row(FLOOR_NAMES[f],st.floors[f])).join('')}<tr style="background:#f3ecd8">${row('GRAND TOTAL',A).slice(4)}</table>
+  <table>${head.replace('&nbsp;','Flat Type')}${Object.keys(TYPES).filter(k=>st.types[k]).map(k=>row(TYPES[k],st.types[k])).join('')}</table>
+  <div class="lg"><span style="color:#1a7a40">● Available</span><span style="color:#b03020">● Sold · Paid</span><span style="color:#d9822b">● Sold · Partial</span><span style="color:#1a4a8a">● Booked</span></div>
+  ${g}<script>window.onload=function(){setTimeout(function(){window.print();},400);}<\/script></body></html>`);
+  w.document.close();
+}
 
-// ==================== SALE ====================
 function checkFlatAvailability(){
   const flatno=document.getElementById('s-flatno').value.trim();
   if(!flatno)return;
