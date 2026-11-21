@@ -243,7 +243,7 @@ input[type="file"]{display:none;}
   .main{padding:0!important;max-width:100%!important;}
   .card{box-shadow:none!important;border:1px solid #ddd!important;margin-bottom:12px!important;break-inside:avoid;}
   body{background:#fff!important;}
-  /* Watermark print pe bhi dikhe */
+  /* Watermark also shows when printing */
   .page-watermark{display:flex!important;position:fixed!important;}
   .page-watermark::before{opacity:0.07!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   .main::before{opacity:0.07!important;position:fixed!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
@@ -325,7 +325,7 @@ input[type="file"]{display:none;}
     <label class="login-label">Password</label>
     <input class="login-inp" id="li-pass" type="password" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()">
     <button class="login-btn" onclick="doLogin()">🔐 Login to ERP</button>
-    <div class="login-err" id="li-err">❌ Username ya Password galat hai!</div>
+    <div class="login-err" id="li-err">❌ Incorrect username or password!</div>
     <div class="login-footer">📍 FL-2, Block 5, Saadi Town, Scheme 33, Karachi &nbsp;·&nbsp; 0321-2447324</div>
   </div>
 </div>
@@ -477,7 +477,7 @@ input[type="file"]{display:none;}
   <div class="card" style="margin-bottom:18px;">
     <div class="card-header"><h3>✏️ Edit Existing Sale</h3></div>
     <div class="card-body">
-      <input type="text" id="sale-edit-search" placeholder="🔍 Name, Flat ya CNIC se dhoondein..." oninput="renderSaleEditList()" style="width:100%;margin-bottom:10px;">
+      <input type="text" id="sale-edit-search" placeholder="🔍 Search by name, flat or CNIC..." oninput="renderSaleEditList()" style="width:100%;margin-bottom:10px;">
       <div class="tbl-wrap" style="max-height:240px;overflow-y:auto;"><table><thead><tr><th>Flat</th><th>Customer</th><th>Sale Value</th><th>Collected</th><th>Action</th></tr></thead><tbody id="sale-edit-tbody"></tbody></table></div>
     </div>
   </div>
@@ -627,7 +627,7 @@ input[type="file"]{display:none;}
           <label>CNIC Front Side</label>
           <div class="photo-upload" id="cnic-front-area" onclick="document.getElementById('s-cnic-front-file').click()" style="height:110px;">
             <div class="photo-upload-icon">🪪</div>
-            <div class="photo-upload-text">Front Side Upload karein<br><span style="font-size:10px;">JPG, PNG — Max 2MB</span></div>
+            <div class="photo-upload-text">Upload Front Side<br><span style="font-size:10px;">JPG, PNG — Max 2MB</span></div>
           </div>
           <input type="file" id="s-cnic-front-file" accept="image/*" onchange="loadCnicFront(this)">
         </div>
@@ -635,7 +635,7 @@ input[type="file"]{display:none;}
           <label>CNIC Back Side</label>
           <div class="photo-upload" id="cnic-back-area" onclick="document.getElementById('s-cnic-back-file').click()" style="height:110px;">
             <div class="photo-upload-icon">🔄</div>
-            <div class="photo-upload-text">Back Side Upload karein<br><span style="font-size:10px;">JPG, PNG — Max 2MB</span></div>
+            <div class="photo-upload-text">Upload Back Side<br><span style="font-size:10px;">JPG, PNG — Max 2MB</span></div>
           </div>
           <input type="file" id="s-cnic-back-file" accept="image/*" onchange="loadCnicBack(this)">
         </div>
@@ -655,11 +655,11 @@ input[type="file"]{display:none;}
         <div class="form-group"><label>First Installment Date</label><input type="date" id="s-firstinst"></div>
       </div>
       <details style="margin:20px 0 4px;border:1px dashed var(--border);border-radius:10px;padding:10px 14px;">
-        <summary style="cursor:pointer;font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;">🔒 Commission (Secret — client ko nahi dikhega)</summary>
+        <summary style="cursor:pointer;font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;">🔒 Commission (Secret — never shown to the client)</summary>
         <div class="form-grid" style="margin-top:12px;">
-          <div class="form-group"><label>Commission Type</label><select id="s-commtype" onchange="calcComm()"><option value="none">❌ Koi Commission Nahi</option><option value="percent">% Percentage</option><option value="fixed">Rs. Fixed Amount</option></select></div>
-          <div class="form-group"><label>Agent / Referrer Name</label><input type="text" id="s-commagent" placeholder="Jis ne client lagaya"></div>
-          <div class="form-group"><label>Percentage (%) ya Amount (Rs.)</label><input type="number" id="s-commval" placeholder="" oninput="calcComm()"></div>
+          <div class="form-group"><label>Commission Type</label><select id="s-commtype" onchange="calcComm()"><option value="none">❌ No Commission</option><option value="percent">% Percentage</option><option value="fixed">Rs. Fixed Amount</option></select></div>
+          <div class="form-group"><label>Agent / Referrer Name</label><input type="text" id="s-commagent" placeholder="Person who brought the client"></div>
+          <div class="form-group"><label>Percentage (%) or Amount (Rs.)</label><input type="number" id="s-commval" placeholder="" oninput="calcComm()"></div>
           <div class="form-group"><label>Commission Amount (Rs.) — auto</label><input type="number" id="s-commamt" readonly placeholder="" style="background:#f5f0e4;font-weight:800;"></div>
         </div>
       </details>
@@ -833,7 +833,7 @@ input[type="file"]{display:none;}
       </div>
     </div>
     <div class="card-body" id="ledger-body">
-      <div class="empty">Upar se customer select karein</div>
+      <div class="empty">Select a customer above</div>
     </div>
   </div>
 </div>
@@ -846,7 +846,7 @@ input[type="file"]{display:none;}
       <button class="btn btn-gold btn-sm no-print" onclick="sendAllReminders()">📱 Send All WhatsApp Reminders</button>
     </div>
     <div class="card-body">
-      <div class="info-box">⚠️ Yeh customers hain jinki installment <b>3 din mein</b> due hai ya <b>overdue</b> hai</div>
+      <div class="info-box">⚠️ These customers have an installment due <b>within 3 days</b> or <b>overdue</b></div>
       <div class="tbl-wrap">
         <table>
           <thead><tr><th>#</th><th>Customer</th><th>Phone</th><th>Flat</th><th>Installment</th><th>Due Date</th><th>Amount</th><th>Status</th><th class="no-print">WhatsApp</th></tr></thead>
@@ -885,7 +885,7 @@ input[type="file"]{display:none;}
 <!-- ==================== BLACKLIST ==================== -->
 <div class="page" id="pg-commission">
   <div class="card">
-    <div class="card-header"><h3>🔒 Commission (Secret — client ko kahin nazar nahi aata)</h3><button class="btn btn-sm" onclick="changeCommPin()">🔑 PIN badlein</button></div>
+    <div class="card-header"><h3>🔒 Commission (Secret — never visible to clients)</h3><button class="btn btn-sm" onclick="changeCommPin()">🔑 Change PIN</button></div>
     <div class="card-body">
       <div id="comm-summary" style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px;"></div>
       <div class="tbl-wrap"><table><thead><tr><th>Agent / Referrer</th><th>Customer</th><th>Flat</th><th>Sale Value</th><th>Commission</th><th>Paid</th><th>Pending</th><th>Action</th></tr></thead><tbody id="comm-tbody"></tbody></table></div>
@@ -903,7 +903,7 @@ input[type="file"]{display:none;}
     </div>
     <div class="card-body">
       <div style="padding:12px 16px;background:#fdf0ee;border:1.5px solid rgba(176,48,32,.2);border-radius:10px;font-size:12.5px;color:var(--red);font-weight:600;margin-bottom:14px;">
-        ⚠️ Yeh customers <b>3 consecutive months</b> se installment nahi de rahe. Cancellation notice issue karna zaroori hai.
+        ⚠️ These customers have not paid an installment for <b>3 consecutive months</b>. A cancellation notice must be issued.
       </div>
       <div class="tbl-wrap">
         <table>
@@ -1005,7 +1005,7 @@ input[type="file"]{display:none;}
       <div class="form-grid" id="type-rates"></div>
       <div class="btn-row">
         <button class="btn btn-gold" onclick="saveSettings()">💾 Save</button>
-        <button class="btn btn-red" onclick="if(confirm('All data delete hoga!'))resetAll()">⚠️ Reset</button>
+        <button class="btn btn-red" onclick="if(confirm('All data will be deleted!'))resetAll()">⚠️ Reset</button>
       </div>
     </div>
   </div>
@@ -1284,7 +1284,7 @@ function checkFlatAvailability(){
   const flatno=document.getElementById('s-flatno').value.trim();
   if(!flatno)return;
   const exists=D.customers.find(c=>c.flatno===flatno);
-  if(exists){showAlert('sale-alert','e','⚠️ Flat '+flatno+' already '+exists.name+' ko sold/booked hai!');}
+  if(exists){showAlert('sale-alert','e','⚠️ Flat '+flatno+' is already sold/booked to '+exists.name+'!');}
 }
 
 function autoFillPrice(){
@@ -1340,7 +1340,7 @@ function previewInstallments(){
   const booking=Number(document.getElementById('s-booking').value)||0;
   const count=Math.min(60,Number(document.getElementById('s-instcount').value)||0);
   const firstDate=document.getElementById('s-firstinst').value;
-  if(!total||!count||!firstDate){showAlert('sale-alert','e','Size, Rate, Number of Installments aur First Date zaroori hain!');return;}
+  if(!total||!count||!firstDate){showAlert('sale-alert','e','Size, Rate, Number of Installments and First Installment Date are required!');return;}
   const rest=Math.max(0,total-booking),monthly=Math.round(rest/count);
   let rows='';
   if(booking>0)rows+=`<tr><td>—</td><td>${fmtDate(document.getElementById('s-bdate').value)}</td><td>${fmt(booking)}</td><td><span class="badge b-gold">Down Payment</span></td></tr>`;
@@ -1423,10 +1423,10 @@ function saveSale(){
   const flatno=document.getElementById('s-flatno').value.trim();
   const total=Number(document.getElementById('s-total').value)||0;
   const phone=document.getElementById('s-phone').value.trim();
-  if(!name&&!flatno&&!total&&!phone){showAlert('sale-alert','e','Kam az kam ek field fill karein!');return;}
-  if(!name||!flatno){showAlert('sale-alert','e','Client Name aur Unit No zaroori hain!');return;}
-  if(!total){showAlert('sale-alert','e','Size aur Rate daalein, Total Price khud calculate hoga.');return;}
-  if(flatno&&D.customers.find(c=>c.flatno===flatno&&c.id!==editingId)){showAlert('sale-alert','e','Flat '+flatno+' already sold hai!');return;}
+  if(!name&&!flatno&&!total&&!phone){showAlert('sale-alert','e','Please fill in at least one field!');return;}
+  if(!name||!flatno){showAlert('sale-alert','e','Client Name and Unit No are required!');return;}
+  if(!total){showAlert('sale-alert','e','Enter Size and Rate; the Total Price is calculated automatically.');return;}
+  if(flatno&&D.customers.find(c=>c.flatno===flatno&&c.id!==editingId)){showAlert('sale-alert','e','Flat '+flatno+' is already sold!');return;}
 
   const cust={
     id:'c'+Date.now(),
@@ -1516,35 +1516,35 @@ function calcComm(){
 function commPaid(c){return (c.commPaid||[]).reduce((a,p)=>a+Number(p.amount||0),0);}
 function renderCommission(){
   if(!commUnlocked){
-    if(!D.settings.commPin){const n=prompt('Commission page ke liye naya PIN set karein:');if(!n){showPage('dashboard');return;}D.settings.commPin=String(n);saveDB();commUnlocked=true;}
-    else{const x=prompt('Commission PIN daalein:');if(x===null||String(x)!==String(D.settings.commPin)){if(x!==null)alert('❌ Galat PIN');showPage('dashboard');return;}commUnlocked=true;}
+    if(!D.settings.commPin){const n=prompt('Set a new PIN for the Commission page:');if(!n){showPage('dashboard');return;}D.settings.commPin=String(n);saveDB();commUnlocked=true;}
+    else{const x=prompt('Enter Commission PIN:');if(x===null||String(x)!==String(D.settings.commPin)){if(x!==null)alert('❌ Incorrect PIN');showPage('dashboard');return;}commUnlocked=true;}
   }
   const list=D.customers.filter(c=>c.commType&&c.commType!=='none'&&commOf(c)>0);
   let tc=0,tp=0;
   const rows=list.map(c=>{const a=commOf(c),p=commPaid(c);tc+=a;tp+=p;
     return`<tr><td><b>${c.commAgent||'—'}</b></td><td>${c.name}</td><td>${c.flatno||'—'}</td><td>Rs. ${fmt(c.total)}</td><td>Rs. ${fmt(a)}<div style="font-size:11px;color:var(--text3);">${c.commType==='percent'?c.commVal+'%':'Fixed'}</div></td><td class="text-green">Rs. ${fmt(p)}</td><td class="${a-p>0?'text-red':'text-green'}"><b>Rs. ${fmt(Math.max(0,a-p))}</b></td><td>${a-p>0?`<button class="btn btn-green btn-xs" onclick="payCommission('${c.id}')">💸 Pay</button> `:'✅ '}<button class="btn btn-blue btn-xs" onclick="editCustomer('${c.id}')">✏️</button></td></tr>`;}).join('');
-  document.getElementById('comm-tbody').innerHTML=rows||'<tr><td colspan="8" class="empty">Abhi koi commission nahi</td></tr>';
+  document.getElementById('comm-tbody').innerHTML=rows||'<tr><td colspan="8" class="empty">No commission yet</td></tr>';
   const card=(l,v,c)=>`<div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 20px;min-width:170px;"><div style="font-size:11px;color:var(--text3);font-weight:700;text-transform:uppercase;">${l}</div><div style="font-size:20px;font-weight:800;color:${c};">Rs. ${fmt(v)}</div></div>`;
   document.getElementById('comm-summary').innerHTML=card('Total Commission',tc,'var(--navy)')+card('Paid',tp,'#1a7a40')+card('Pending',Math.max(0,tc-tp),'#b03020');
 }
 function payCommission(id){
   const c=getCust(id);if(!c)return;
   const pend=Math.max(0,commOf(c)-commPaid(c));
-  const x=prompt('Commission ki kitni raqam di? (Pending: Rs. '+fmt(pend)+')',pend);
+  const x=prompt('How much commission was paid? (Pending: Rs. '+fmt(pend)+')',pend);
   const amt=Number(x);if(!x||!amt||amt<=0)return;
   if(!c.commPaid)c.commPaid=[];
   c.commPaid.push({id:'cp'+Date.now(),date:today(),amount:amt});
   saveDB();renderCommission();
 }
 function changeCommPin(){
-  const n=prompt('Naya Commission PIN:');if(!n)return;
-  D.settings.commPin=String(n);saveDB();alert('✅ PIN badal gaya');
+  const n=prompt('New Commission PIN:');if(!n)return;
+  D.settings.commPin=String(n);saveDB();alert('✅ PIN changed');
 }
 function renderSaleEditList(){
   const tb=document.getElementById('sale-edit-tbody');if(!tb)return;
   const q=(document.getElementById('sale-edit-search')?.value||'').toLowerCase();
   const list=D.customers.filter(c=>!q||(c.name||'').toLowerCase().includes(q)||(c.flatno||'').toLowerCase().includes(q)||(c.cnic||'').includes(q)).slice().reverse();
-  tb.innerHTML=list.length?list.map(c=>`<tr${c.id===editingId?' style="background:#fff6dc;"':''}><td><b>${c.flatno||'—'}</b></td><td>${c.name||'—'}<div style="font-size:11px;color:var(--text3);">${c.phone||''}</div></td><td>Rs. ${fmt(c.total)}</td><td class="text-green">Rs. ${fmt(getCustPaid(c.id))}</td><td><button class="btn btn-blue btn-xs" onclick="editCustomer('${c.id}')">✏️ Edit</button> <button class="btn btn-gold btn-xs" onclick="openAgreementModal('${c.id}')">📄 Agreement</button></td></tr>`).join(''):'<tr><td colspan="5" class="empty">Abhi koi sale nahi</td></tr>';
+  tb.innerHTML=list.length?list.map(c=>`<tr${c.id===editingId?' style="background:#fff6dc;"':''}><td><b>${c.flatno||'—'}</b></td><td>${c.name||'—'}<div style="font-size:11px;color:var(--text3);">${c.phone||''}</div></td><td>Rs. ${fmt(c.total)}</td><td class="text-green">Rs. ${fmt(getCustPaid(c.id))}</td><td><button class="btn btn-blue btn-xs" onclick="editCustomer('${c.id}')">✏️ Edit</button> <button class="btn btn-gold btn-xs" onclick="openAgreementModal('${c.id}')">📄 Agreement</button></td></tr>`).join(''):'<tr><td colspan="5" class="empty">No sales yet</td></tr>';
 }
 function setEditMode(on){
   const b=document.getElementById('save-sale-btn');if(b)b.textContent=on?'✏️ Update Sale & Show Agreement':'💾 Save Booking & Generate Agreement';
@@ -1568,7 +1568,7 @@ function editCustomer(id){
   calcComm();
   currentPhotoB64=c.photo||'';currentCnicFrontB64=c.cnicFront||'';currentCnicBackB64=c.cnicBack||'';
   [['photo-upload-area',currentPhotoB64],['cnic-front-area',currentCnicFrontB64],['cnic-back-area',currentCnicBackB64]].forEach(([a,b])=>{const e=document.getElementById(a);if(e&&b)e.innerHTML=`<img src="${b}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;});
-  showAlert('sale-alert','s','✏️ Edit mode: '+c.name+' (Flat '+c.flatno+'). Badlav karke "Update Sale" dabayein. Payments same rahenge.');
+  showAlert('sale-alert','s','✏️ Edit mode: '+c.name+' (Flat '+c.flatno+'). Make your changes and press "Update Sale". Existing payments stay unchanged.');
   renderSaleEditList();window.scrollTo(0,0);
 }
 function clearSale(){editingId=null;setEditMode(false);["s-dpreq","s-instcount","s-firstinst","s-appno","s-commval","s-commagent","s-commamt"].forEach(function(i){var e=document.getElementById(i);if(e)e.value="";});var _ct=document.getElementById("s-commtype");if(_ct)_ct.value="none";
@@ -1578,8 +1578,8 @@ function clearSale(){editingId=null;setEditMode(false);["s-dpreq","s-instcount",
   const ta=document.getElementById('s-terms-accept');if(ta)ta.checked=false;
   currentPhotoB64='';currentCnicFrontB64='';currentCnicBackB64='';
   document.getElementById('photo-upload-area').innerHTML=`<div class="photo-upload-icon">📷</div><div class="photo-upload-text">Click to upload photo<br><span style="font-size:10px;">JPG, PNG — Max 2MB</span></div>`;
-  const cf=document.getElementById('cnic-front-area');if(cf)cf.innerHTML=`<div class="photo-upload-icon">🪪</div><div class="photo-upload-text">Front Side Upload karein<br><span style="font-size:10px;">JPG, PNG — Max 2MB</span></div>`;
-  const cb=document.getElementById('cnic-back-area');if(cb)cb.innerHTML=`<div class="photo-upload-icon">🔄</div><div class="photo-upload-text">Back Side Upload karein<br><span style="font-size:10px;">JPG, PNG — Max 2MB</span></div>`;
+  const cf=document.getElementById('cnic-front-area');if(cf)cf.innerHTML=`<div class="photo-upload-icon">🪪</div><div class="photo-upload-text">Upload Front Side<br><span style="font-size:10px;">JPG, PNG — Max 2MB</span></div>`;
+  const cb=document.getElementById('cnic-back-area');if(cb)cb.innerHTML=`<div class="photo-upload-icon">🔄</div><div class="photo-upload-text">Upload Back Side<br><span style="font-size:10px;">JPG, PNG — Max 2MB</span></div>`;
   document.getElementById('inst-preview-wrap').style.display='none';
 }
 
@@ -1639,7 +1639,7 @@ function renderCustomers(){
   }).filter(Boolean).join(''):'<tr><td colspan="12" class="empty">No customers found</td></tr>';
 }
 
-function deleteCust(id){if(!confirm('Customer aur uskay sab payments delete honge!'))return;D.customers=D.customers.filter(c=>c.id!==id);D.payments=D.payments.filter(p=>p.custId!==id);saveDB();renderAll();}
+function deleteCust(id){if(!confirm('This customer and all their payments will be deleted!'))return;D.customers=D.customers.filter(c=>c.id!==id);D.payments=D.payments.filter(p=>p.custId!==id);saveDB();renderAll();}
 
 function openCustModal(id){
   const c=getCust(id);if(!c)return;
@@ -1740,7 +1740,7 @@ function savePayment(){
   const custId=document.getElementById('col-customer').value;
   const instIdx=document.getElementById('col-installment').value;
   const amount=Number(document.getElementById('col-amount').value)||0;
-  if(!custId||instIdx===''||!amount){showAlert('col-alert','e','Customer, Installment aur Amount zaroori!');return;}
+  if(!custId||instIdx===''||!amount){showAlert('col-alert','e','Customer, Installment and Amount are required!');return;}
   const receipt=nextReceipt();
   D.payments.push({id:'p'+Date.now(),custId,instIdx:Number(instIdx),date:document.getElementById('col-date').value||today(),amount,mode:document.getElementById('col-mode').value,receipt,remarks:document.getElementById('col-remarks').value,createdAt:new Date().toISOString()});
   saveDB();showAlert('col-alert','s','✅ Payment saved! Receipt: '+receipt);
@@ -1781,7 +1781,7 @@ function renderPayments(){
   const el5=document.getElementById('col-overdue');if(el5)el5.textContent='Rs. '+fmt(overdueAmt);
 }
 
-function deletePayment(id){if(!confirm('Payment delete karein?'))return;D.payments=D.payments.filter(p=>p.id!==id);saveDB();renderPayments();renderDashboard();}
+function deletePayment(id){if(!confirm('Delete this payment?'))return;D.payments=D.payments.filter(p=>p.id!==id);saveDB();renderPayments();renderDashboard();}
 
 // ==================== LEDGER ====================
 function buildLedgerDropdown(){
@@ -1794,7 +1794,7 @@ function buildLedgerDropdown(){
 function renderLedgerOld(){
   const custId=document.getElementById('led-customer')?.value;
   const body=document.getElementById('ledger-body');if(!body)return;
-  if(!custId){body.innerHTML='<div class="empty">Upar se customer select karein</div>';return;}
+  if(!custId){body.innerHTML='<div class="empty">Select a customer above</div>';return;}
   const c=getCust(custId);if(!c){body.innerHTML='<div class="empty">Customer not found</div>';return;}
   currentAgreementCustomer=c;
   const paid=getCustPaid(custId);
@@ -1859,7 +1859,7 @@ function openAgreementModal(custId){
   currentAgreementCustomer=c;
   const paid=getCustPaid(custId);
   const outstanding=Number(c.total||0)-paid;
-  document.getElementById('agreement-modal-body').innerHTML=(Number(c.total)?'':'<div style="background:#fdf0ee;color:#b03020;padding:12px 16px;font-weight:700;margin-bottom:10px;border-radius:8px;">⚠️ Is customer ki Total Sale Value 0 hai. Upar ✏️ Edit dabayein aur Size / Rate / Extras bharein.</div>')+buildAgreementHTML(c,paid,outstanding);
+  document.getElementById('agreement-modal-body').innerHTML=(Number(c.total)?'':'<div style="background:#fdf0ee;color:#b03020;padding:12px 16px;font-weight:700;margin-bottom:10px;border-radius:8px;">⚠️ The Total Sale Value for this customer is 0. Press ✏️ Edit above and fill in Size / Rate / Extras.</div>')+buildAgreementHTML(c,paid,outstanding);
   document.getElementById('agreement-modal').style.display='flex';
 }
 
@@ -2176,7 +2176,7 @@ function renderReminders(){
 function sendWaReminder(custId,instIdx){
   const c=getCust(custId);if(!c)return;
   const phone=c.wa||c.phone;
-  if(!phone){alert('Customer ka WhatsApp number nahi hai!');return;}
+  if(!phone){alert('This customer has no WhatsApp number!');return;}
   let waPhone=phone.replace(/[^0-9]/g,'');
   if(waPhone.startsWith('0'))waPhone='92'+waPhone.substring(1);
 
@@ -2202,8 +2202,8 @@ function sendWaReminder(custId,instIdx){
 
 function sendAllReminders(){
   const rows=document.querySelectorAll('#rem-tbody tr');
-  if(!rows.length||rows[0].querySelector('.empty')){alert('Koi reminder nahi hai!');return;}
-  alert(`${rows.length} reminders hain. Ek ek kar ke WhatsApp send karein!`);
+  if(!rows.length||rows[0].querySelector('.empty')){alert('There are no reminders!');return;}
+  alert(`${rows.length} reminders found. Send them one by one on WhatsApp!`);
 }
 
 function checkReminders(){showPage('reminders');}
@@ -2323,7 +2323,7 @@ function renderBlacklist(){
     }
   });
   if(!blacklisted.length){
-    tbody.innerHTML='<tr><td colspan="10" class="empty">✅ Koi customer blacklisted nahi hai</td></tr>';
+    tbody.innerHTML='<tr><td colspan="10" class="empty">✅ No customer is blacklisted</td></tr>';
     return;
   }
   tbody.innerHTML=blacklisted.map((b,i)=>`
@@ -2525,7 +2525,7 @@ function exportExcel(){
   a.href=url;a.download='MNR_Export_'+today()+'.csv';
   document.body.appendChild(a);a.click();document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  alert('✅ Export ho gaya! Excel mein open karein.');
+  alert('✅ Export complete! Open the file in Excel.');
 }
 
 // ==================== BACKUP & RESTORE ====================
@@ -2537,12 +2537,12 @@ function backupData(){
   a.href=url;a.download='MNR_Backup_'+today()+'.json';
   document.body.appendChild(a);a.click();document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  alert('✅ Backup saved! JSON file download ho gayi.');
+  alert('✅ Backup saved! The JSON file has been downloaded.');
 }
 
 function restoreData(input){
   const file=input.files[0];if(!file)return;
-  if(!confirm('⚠️ Restore karne se current data replace ho jayega. Confirm?'))return;
+  if(!confirm('⚠️ Restoring will replace the current data. Confirm?'))return;
   const reader=new FileReader();
   reader.onload=e=>{
     try{
@@ -2550,7 +2550,7 @@ function restoreData(input){
       if(!restored.customers)throw new Error('Invalid backup file');
       D=mergeD(restored);
       saveDB();renderAll();
-      alert('✅ Data restore ho gaya! '+D.customers.length+' customers load hue.');
+      alert('✅ Data restored! '+D.customers.length+' customers loaded.');
     }catch(err){alert('❌ Invalid backup file: '+err.message);}
   };
   reader.readAsText(file);
@@ -2588,7 +2588,7 @@ function showWAToast(){
     toast.style.cssText = 'position:fixed;bottom:28px;right:28px;z-index:99999;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;padding:14px 20px;border-radius:14px;font-size:13px;font-weight:700;box-shadow:0 8px 32px rgba(0,0,0,.25);display:flex;align-items:center;gap:10px;max-width:360px;';
     document.body.appendChild(toast);
   }
-  toast.innerHTML = '<span style="font-size:22px;">💬</span><span>WhatsApp khul raha hai — Boss ko message bhejein!</span>';
+  toast.innerHTML = '<span style="font-size:22px;">💬</span><span>WhatsApp is opening — send the message to the Boss!</span>';
   toast.style.display = 'flex';
   clearTimeout(window._waToastTimer);
   window._waToastTimer = setTimeout(function(){ toast.style.display='none'; }, 5000);
@@ -2668,13 +2668,13 @@ function planOf(c){
   const dpReq=Number(c.dpreq||0);
   const sumP=f=>D.payments.filter(p=>p.custId===c.id&&f(p)).reduce((a,p)=>a+Number(p.amount||0),0);
   const dpRec=sumP(p=>p.applied==='DP');
-  const advRec=sumP(p=>p.applied==='ADV');          // advance: total se minus
-  const rest0=Math.max(0,total-dpRec);              // advance se pehle ki baqi raqam
-  const rest=Math.max(0,rest0-advRec);              // advance ke baad
-  const m0=N>0?Math.round(rest0/N):0;               // asli monthly (Excel formula)
+  const advRec=sumP(p=>p.applied==='ADV');          // advance: deducted from total
+  const rest0=Math.max(0,total-dpRec);              // balance before advance
+  const rest=Math.max(0,rest0-advRec);              // after advance
+  const m0=N>0?Math.round(rest0/N):0;               // original monthly (Excel formula)
   const paidArr=[];for(let i=1;i<=N;i++)paidArr.push(sumP(p=>p.applied!=='DP'&&p.applied!=='ADV'&&Number(p.applied)===i));
   const origDue=i=>i===N?rest0-m0*(N-1):m0;
-  // advance ho to: jin installments par payment ho chuki unki raqam wahi, baqi par nayi monthly
+  // with advance: installments already paid keep their amount, the rest get the new monthly
   let dueArr=[],monthly=m0;
   if(advRec>0&&N>0){
     let closedDue=0,k=0;paidArr.forEach((p,j)=>{if(p>0){closedDue+=origDue(j+1);k++;}});
@@ -2689,8 +2689,8 @@ function planOf(c){
   const rows=[];let carry=0;
   for(let i=1;i<=N;i++){
     const due=dueArr[i-1],paid=paidArr[i-1];
-    const payable=due+carry;            // monthly + pichla shortfall (ya minus advance)
-    const balance=payable-paid;         // negative = advance, agli installment kam karega
+    const payable=due+carry;            // monthly + previous shortfall (or minus advance)
+    const balance=payable-paid;         // negative = advance, reduces the next installment
     rows.push({type:'monthly',label:'Installment #'+i,dueDate:edate(c.firstDate||c.date,i-1),due,carry,payable,paid,balance,amount:Math.max(0,payable),idx:i-1});
     carry=(paid>0||balance<0)?balance:0;
   }
@@ -2705,7 +2705,7 @@ function repairTotals(){
 }
 function syncAll(){
   repairTotals();
-  // Purani payments (jin par 'Applied To' nahi tha) naye plan wale customer mein Down Payment ginti jayengi
+  // Old payments without 'Applied To' count as Down Payment for plan customers
   const xl={};D.customers.forEach(c=>{if(c.plan==='xl')xl[c.id]=1;});
   D.payments.forEach(p=>{if(xl[p.custId]&&(p.applied===undefined||p.applied===''))p.applied='DP';});
   D.customers.forEach(c=>{if(c.plan==='xl')c.installments=planOf(c).rows;});
@@ -2714,12 +2714,12 @@ function syncAll(){
 function buildInstallmentSchedule(){return [];}
 function instAmt(i){
   if(i.due===undefined)return fmt(i.amount);
-  return fmt(i.due)+(i.carry>0?` <small style="color:#b03020;font-weight:700;">(+${fmt(i.carry)} baqaya)</small>`:i.carry<0?` <small style="color:#1a7a40;font-weight:700;">(−${fmt(-i.carry)} advance)</small>`:'');
+  return fmt(i.due)+(i.carry>0?` <small style="color:#b03020;font-weight:700;">(+${fmt(i.carry)} balance)</small>`:i.carry<0?` <small style="color:#1a7a40;font-weight:700;">(−${fmt(-i.carry)} advance)</small>`:'');
 }
 function xlPlanRows(c){const p=planOf(c);const rest=Math.max(0,p.total-p.dpRec-p.advRec);
   const rows=[{label:'Down Payment Received'+(p.dpReq>p.dpRec?' (Required: Rs. '+fmt(p.dpReq)+')':''),amt:p.dpRec}];
-  if(p.advRec>0)rows.push({label:'Advance Received (total se minus)',amt:p.advRec});
-  rows.push({label:p.N?(p.advRec>0?p.N+' Monthly Installments (advance ke baad baqi installments Rs. '+fmt(p.monthly)+' each, first: '+fmtDate(c.firstDate)+')':p.N+' Monthly Installments of Rs. '+fmt(p.monthly)+' (first: '+fmtDate(c.firstDate)+')'):'Remaining Balance (installments abhi set nahi — ✏️ Edit karein)',amt:rest});
+  if(p.advRec>0)rows.push({label:'Advance Received (deducted from total)',amt:p.advRec});
+  rows.push({label:p.N?(p.advRec>0?p.N+' Monthly Installments (after advance, remaining installments Rs. '+fmt(p.monthly)+' each, first: '+fmtDate(c.firstDate)+')':p.N+' Monthly Installments of Rs. '+fmt(p.monthly)+' (first: '+fmtDate(c.firstDate)+')'):'Remaining Balance (installments not set yet — use ✏️ Edit)',amt:rest});
   return rows;}
 
 function loadCustomerInstallments(){
@@ -2731,7 +2731,7 @@ function loadCustomerInstallments(){
   const pl=planOf(c);let first=null,firstAmt=0;
   sel.innerHTML='<option value="">— Applied To —</option>';
   if(pl.dpBal>0||pl.dpRec===0){sel.innerHTML+=`<option value="DP">Down Payment — Rs. ${fmt(pl.dpBal)} remaining</option>`;if(pl.dpBal>0){first='DP';firstAmt=pl.dpBal;}}
-  if(c.plan==='xl'&&pl.N>0)sel.innerHTML+=`<option value="ADV">Advance — total se minus, monthly kam hogi</option>`;
+  if(c.plan==='xl'&&pl.N>0)sel.innerHTML+=`<option value="ADV">Advance — deducted from total, lowers monthly</option>`;
   pl.rows.forEach((r,i)=>{
     const rem=r.balance;
     if(rem>0){sel.innerHTML+=`<option value="${i+1}">#${i+1} — ${fmtDate(r.dueDate)} — Rs. ${fmt(rem)} remaining ${getInstallmentStatus(r,custId)==='overdue'?'⚠️':''}</option>`;if(first===null){first=String(i+1);firstAmt=rem;}}
@@ -2742,7 +2742,7 @@ function savePayment(){
   const custId=document.getElementById('col-customer').value;
   const ap=document.getElementById('col-installment').value;
   const amount=Number(document.getElementById('col-amount').value)||0;
-  if(!custId||ap===''||!amount){showAlert('col-alert','e','Customer, Applied To aur Amount zaroori!');return;}
+  if(!custId||ap===''||!amount){showAlert('col-alert','e','Customer, Applied To and Amount are required!');return;}
   const receipt=nextReceipt();
   const applied=(ap==='DP'||ap==='ADV')?ap:Number(ap);
   D.payments.push({id:'p'+Date.now(),custId,applied,instIdx:(applied==='DP'||applied==='ADV')?-1:applied-1,date:document.getElementById('col-date').value||today(),amount,mode:document.getElementById('col-mode').value,receipt,remarks:document.getElementById('col-remarks').value,createdAt:new Date().toISOString()});
@@ -2780,6 +2780,6 @@ function renderLedger(){
   </tbody></table></div>`;
 }
 </script>
-<div style="position:fixed;bottom:6px;left:10px;font-size:10px;font-weight:700;color:#8a7a60;z-index:9;pointer-events:none;">Version 4 · Excel Plan + Edit · 31-Oct-2026</div>
+<div style="position:fixed;bottom:6px;left:10px;font-size:10px;font-weight:700;color:#8a7a60;z-index:9;pointer-events:none;">Version 5 · English · Commission · Advance · Edit</div>
 </body>
 </html>
