@@ -419,6 +419,8 @@ input[type="file"]{display:none;}
         <span class="badge b-red">● Sold</span>
         <span class="badge b-orange">● Partial</span>
         <span class="badge b-blue">● Booked</span>
+        <select id="fp-view" class="filter-sel" onchange="renderFloorPlan()"><option value="plan">🏢 Building Plan</option><option value="cards">🗂️ Flat Cards</option></select>
+        <button class="btn btn-gold btn-sm" onclick="printBlueprint()">🖨️ Print Plan</button>
         <button class="btn btn-gold btn-sm" onclick="printFloorPlan()">🖨️ Print Report</button>
         <select id="fp-floor" class="filter-sel" onchange="renderFloorPlan()">
           <option value="all">All Floors</option>
@@ -1257,7 +1259,7 @@ function fpStats(){
   const sold=o=>o.paid+o.partial+o.booked;st.sold=sold;
   return st;
 }
-function renderFloorPlan(){
+function renderFloorCards(summaryOnly){
   if(!document.getElementById('fp-style')){const el=document.createElement('style');el.id='fp-style';el.textContent=`
   .fp-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px;}
   .fp-stat{background:linear-gradient(145deg,#fff,#faf6ec);border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:0 3px 10px rgba(13,27,62,.07);position:relative;overflow:hidden;}
@@ -1294,6 +1296,7 @@ function renderFloorPlan(){
   </div>
   <div class="fp-types">${Object.keys(TYPES).filter(k=>st.types[k]).map(k=>{const o=st.types[k];return`<div class="fp-type" style="--c:${FP_TYPE_COL[k]}"><b>${TYPES[k]}</b><div class="n">Sold <b style="color:#b03020">${sold_(o)}</b> / ${o.total} &nbsp;·&nbsp; Left <b style="color:#1a7a40">${o.available}</b></div>${bar(o)}</div>`;}).join('')}</div>`;
   function sold_(o){return o.paid+o.partial+o.booked;}
+  if(summaryOnly)return html;
   floors.forEach(f=>{
     const o=st.floors[f],so=sold_(o);
     html+=`<div style="margin-bottom:26px;">
@@ -1313,6 +1316,84 @@ function renderFloorPlan(){
     html+='</div></div>';
   });
   document.getElementById('floorplan-body').innerHTML=html;
+}
+// ==================== BLUEPRINT VIEW (same as the printed building chart) ====================
+const BP_CSS=`
+.bp-frame{background:#0c0c0e;border:4px solid #c9a84c;border-radius:6px;padding:18px 22px 20px;min-width:1400px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.bp-title{font-family:'Playfair Display',Georgia,serif;font-weight:900;font-size:34px;letter-spacing:1px;color:#e7c766;text-align:center;margin:0 0 4px;text-shadow:0 2px 6px rgba(0,0,0,.6);}
+.bp-sub{text-align:center;color:#b99a45;font-size:11px;letter-spacing:3px;font-weight:700;margin-bottom:12px;}
+.bp-plan{background:linear-gradient(135deg,#f1f2f0,#dfe3e1);border:3px solid #c9a84c;border-radius:6px;padding:10px;display:grid;grid-template-columns:1.25fr repeat(9,1fr) 1.25fr;grid-template-rows:auto 1fr auto;gap:4px;}
+.bp-b{position:relative;border:1px solid #b9a27a;padding:3px 4px 4px;font-family:Arial,Helvetica,sans-serif;box-shadow:0 1px 3px rgba(0,0,0,.18);}
+.t-A{background:#e8b46f;}.t-B{background:#f7e8cf;}.t-B1{background:#ece7dd;}.t-C{background:#f3edb8;}.t-C1{background:#dcdee2;}
+.bp-h{text-align:center;color:#7a1f1f;font-weight:700;font-size:12px;padding:1px 0 3px;letter-spacing:.3px;}
+.bp-n{position:absolute;right:3px;bottom:2px;font-size:9px;font-weight:800;color:#7a1f1f;background:rgba(255,255,255,.7);border-radius:8px;padding:0 4px;}
+.bp-r{display:flex;align-items:flex-end;gap:3px;font-size:10px;line-height:14px;height:15px;color:#6b1a1a;border-bottom:1px solid #8a6a4a;margin-bottom:0;padding:0 1px;}
+.bp-r b{font-weight:700;min-width:25px;font-size:10px;}
+.bp-r span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:8.5px;font-weight:800;color:#0d1b3e;text-transform:uppercase;}
+.bp-r em{font-style:normal;font-size:7px;font-weight:800;color:#fff;border-radius:3px;padding:0 3px;line-height:10px;align-self:center;white-space:nowrap;letter-spacing:.3px;}
+.bp-r.paid em{background:#b03020;}.bp-r.partial em{background:#d9822b;}.bp-r.booked em{background:#1a4a8a;}
+.bp-r.paid{background:rgba(176,48,32,.30);}.bp-r.partial{background:rgba(217,130,43,.38);}.bp-r.booked{background:rgba(26,74,138,.28);}
+.bp-r[onclick]{cursor:pointer;}.bp-r[onclick]:hover{outline:2px solid #0d1b3e;background:rgba(255,255,255,.7);}
+.bp-deco{display:flex;align-items:center;justify-content:center;text-align:center;font-size:9px;font-weight:700;color:#888;letter-spacing:.5px;}
+.bp-lift{background:repeating-linear-gradient(0deg,#1a1a1a 0 18px,#f1f2f0 18px 22px);border:1px solid #555;color:#fff;}
+.bp-stair{background:#cfd3d6;border:1px solid #9aa;color:#445;}
+.bp-sky{color:#7d8790;font-size:10px;letter-spacing:2px;}
+.bp-pass{font-size:8px;color:#777;text-align:center;}
+.bp-leg{display:flex;gap:16px;justify-content:center;margin-top:10px;font-size:11px;font-weight:700;color:#d8c58a;flex-wrap:wrap;}
+.bp-leg i{display:inline-block;width:13px;height:13px;border-radius:3px;margin-right:5px;vertical-align:-2px;border:1px solid #fff5;}
+`;
+function bpBlock(pos,style,cls){
+  const flat=FLAT_LAYOUT.find(x=>x.no===pos);if(!flat)return '';
+  const rows=FLOORS.map(f=>{const i=fpInfo(f,flat);
+    return `<div class="bp-r ${i.status}"${i.cust?` onclick="openCustModal('${i.cust.id}')" title="${i.cust.name} — Flat ${i.flatno}"`:''}><b>${i.flatno}</b>${i.cust?`<em>${i.status==='paid'?'SOLD':i.status==='partial'?'PARTIAL':'BOOKED'}</em>`:''}<span>${i.cust?i.cust.name:''}</span></div>`;}).join('');
+  return `<div class="bp-b t-${flat.type} ${cls||''}" style="${style}"><div class="bp-h">${TYPES[flat.type].toUpperCase()}</div><div class="bp-n">${pos}</div>${rows}</div>`;
+}
+function bpHtml(){
+  const g=(c1,c2,r1,r2)=>`grid-column:${c1}/${c2};grid-row:${r1}/${r2};`;
+  let h='<div class="bp-plan">';
+  // left & right wings (4 stacked blocks each)
+  const wing=(col,list)=>`<div style="${g(col,col+1,1,4)}display:flex;flex-direction:column;gap:4px;">${list.map(p=>bpBlock(p,'flex:1;')).join('')}</div>`;
+  h+=wing(1,['08','07','06','05']);
+  h+=wing(11,['18','19','20','21']);
+  // top row: B units 09..17
+  ['09','10','11','12','13','14','15','16','17'].forEach((p,i)=>{h+=bpBlock(p,g(i+2,i+3,1,2));});
+  // middle: lifts, stairs, C units, open to sky
+  h+=`<div class="bp-deco bp-stair" style="${g(2,3,2,3)}">STAIRS<br>OPEN TO SKY</div>`;
+  h+=`<div class="bp-deco bp-lift" style="${g(3,4,2,3)}">LIFTS</div>`;
+  h+=`<div style="${g(4,6,2,3)}display:flex;align-items:center;">${bpBlock('27','width:100%;')}</div>`;
+  h+=`<div class="bp-deco bp-sky" style="${g(6,7,2,3)}">OPEN<br>TO<br>SKY</div>`;
+  h+=`<div style="${g(7,9,2,3)}display:flex;align-items:center;">${bpBlock('26','width:100%;')}</div>`;
+  h+=`<div class="bp-deco bp-lift" style="${g(9,10,2,3)}">LIFTS</div>`;
+  h+=`<div class="bp-deco bp-stair" style="${g(10,11,2,3)}">STAIRS<br>OPEN TO SKY</div>`;
+  // bottom row: C1 04 03 02 01 | open to sky | 25 24 23 22
+  ['04','03','02','01'].forEach((p,i)=>{h+=bpBlock(p,g(i+2,i+3,3,4));});
+  h+=`<div class="bp-deco bp-sky" style="${g(6,7,3,4)}">OPEN<br>TO<br>SKY</div>`;
+  ['25','24','23','22'].forEach((p,i)=>{h+=bpBlock(p,g(i+7,i+8,3,4));});
+  h+='</div>';
+  return h;
+}
+function bpFrame(){
+  const co=((D.settings&&D.settings.company)||'Malka Noor Residency').toUpperCase();
+  return `<div class="bp-frame"><div class="bp-title">${co}</div><div class="bp-sub">BUILDING FLOOR PLAN · 9 FLOORS · 243 FLATS</div>${bpHtml()}
+  <div class="bp-leg"><span><i style="background:#fff"></i>Available</span><span><i style="background:#b03020"></i>SOLD (fully paid)</span><span><i style="background:#d9822b"></i>PARTIAL (sold, payment pending)</span><span><i style="background:#1a4a8a"></i>BOOKED (no payment yet)</span><span><i style="background:#fff"></i>Blank = Available</span><span style="color:#9a8a5a">Click a name to open the customer</span></div></div>`;
+}
+function renderFloorPlan(){
+  const view=document.getElementById('fp-view')?.value||'plan';
+  const sel=document.getElementById('fp-floor');if(sel)sel.style.display=view==='cards'?'':'none';
+  if(view==='cards'){renderFloorCards();return;}
+  if(!document.getElementById('bp-style')){const el=document.createElement('style');el.id='bp-style';el.textContent=BP_CSS;document.head.appendChild(el);}
+  document.getElementById('floorplan-body').innerHTML=renderFloorCards(true)+'<div style="overflow-x:auto;padding-bottom:6px;">'+bpFrame()+'</div>';
+}
+function printBlueprint(){
+  const st=fpStats(),A=st.all,sold=st.sold(A);
+  const w=window.open('','_blank','width=1200,height=800');
+  if(!w){alert('Please allow pop-ups to print.');return;}
+  w.document.write(`<!DOCTYPE html><html><head><title>Floor Plan</title><style>*{box-sizing:border-box}body{margin:0;padding:10px;background:#0c0c0e;font-family:Arial,sans-serif}
+  .info{color:#e7c766;text-align:center;font-weight:700;font-size:13px;margin:6px 0 8px}.info b{color:#fff}
+  ${BP_CSS}.bp-frame{min-width:0;border-width:3px;padding:10px 12px}.bp-title{font-size:26px}.bp-r{height:13px;line-height:12px}@page{size:A4 landscape;margin:6mm}</style></head><body>
+  ${bpFrame().replace('<div class="bp-leg">',`<div class="info">TOTAL <b>${A.total}</b> &nbsp;·&nbsp; SOLD / BOOKED <b>${sold}</b> &nbsp;·&nbsp; REMAINING <b>${A.available}</b> &nbsp;·&nbsp; ${A.total?Math.round(sold/A.total*100):0}% SOLD</div><div class="bp-leg">`)}
+  <script>window.onload=function(){setTimeout(function(){window.print();},500);}<\/script></body></html>`);
+  w.document.close();
 }
 function printFloorPlan(){
   const st=fpStats(),A=st.all,sold=st.sold(A);
